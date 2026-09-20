@@ -541,16 +541,8 @@ async def climate(city: str = Query("Vadodara", max_length=80)):
 
 @app.get("/api", include_in_schema=False)
 @app.get("/api/", include_in_schema=False)
-@app.get("/api/index.py", include_in_schema=False)
-async def api_root(request: Request):
-    return {
-        "ok": True,
-        "url": str(request.url),
-        "path": request.url.path,
-        "scope_path": request.scope.get("path"),
-        "query": str(request.url.query),
-        "headers": dict(request.headers),
-    }
+async def api_root():
+    return {"ok": True, "message": "WeatherGPT API is operational", "docs": "/api/docs"}
 
 
 @app.post("/api/chat")
@@ -625,5 +617,5 @@ if not os.path.isdir(FRONTEND_DIR):
     FRONTEND_DIR = os.path.join(_this_dir, "frontend")
 if not os.path.isdir(FRONTEND_DIR):
     FRONTEND_DIR = os.path.join(_this_dir, "public")
-if os.path.isdir(FRONTEND_DIR):
+if os.path.isdir(FRONTEND_DIR) and not os.getenv("VERCEL"):
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="site")
