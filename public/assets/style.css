@@ -1656,37 +1656,51 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
   border-radius: 12px !important;
   box-shadow: 0 8px 30px rgba(0,0,0,0.2) !important;
   border: 1px solid var(--line) !important;
+  box-sizing: border-box !important;
+}
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+  line-height: 1.4 !important;
+  max-width: 330px !important;
+  box-sizing: border-box !important;
 }
 .leaflet-popup-tip {
   background: var(--surface) !important;
 }
 /* ---------- map popup card & translation toolbar ---------- */
 .map-popup-card {
-  padding: 4px;
-  min-width: 260px;
-  max-width: 330px;
+  padding: 0;
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .map-popup-card h3 {
   margin: 0 0 6px 0;
-  font: 700 16px/1.2 var(--heading);
+  font: 700 15px/1.2 var(--heading);
   color: var(--ink);
+  word-break: break-word;
 }
 .map-popup-card p {
   margin: 4px 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--ink-soft);
   line-height: 1.4;
+  word-break: break-word;
 }
 
 .map-alert-box {
   background: rgba(220, 38, 38, 0.08);
   border: 1.5px solid #dc2626;
   border-radius: 10px;
-  padding: 10px;
-  margin: 10px 0;
+  padding: 8px 10px;
+  margin: 8px 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   transition: all 0.2s ease;
 }
 :root[data-theme="dark"] .map-alert-box {
@@ -1695,10 +1709,12 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 
 .map-alert-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .map-alert-badge {
@@ -1727,6 +1743,7 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
   padding: 2px;
   gap: 2px;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 .trans-chip {
@@ -1751,15 +1768,35 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 
 .map-alert-text {
   margin: 4px 0 !important;
-  font-size: 12.5px !important;
+  font-size: 12px !important;
   font-weight: 600;
   color: var(--ink) !important;
-  line-height: 1.4 !important;
+  line-height: 1.45 !important;
+  max-height: 110px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  white-space: normal !important;
+  box-sizing: border-box !important;
+  padding-right: 4px;
+}
+
+.map-alert-text::-webkit-scrollbar {
+  width: 4px;
+}
+.map-alert-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+.map-alert-text::-webkit-scrollbar-thumb {
+  background: rgba(220, 38, 38, 0.4);
+  border-radius: 4px;
 }
 
 .map-alert-valid {
   font-size: 11px;
   color: var(--ink-soft);
+  word-break: break-word;
 }
 
 .map-popup-actions {

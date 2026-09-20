@@ -1806,6 +1806,11 @@ function matchAlertDict(title, lang) {
   return null;
 }
 
+function cleanAlertText(text) {
+  if (!text) return "";
+  return String(text).replace(/,([^\s])/g, ", $1").trim();
+}
+
 function createMapPopup(c, weatherData, aqiData, alertData) {
   const card = h("div", "map-popup-card");
   const current = weatherData ? weatherData.forecast.current : null;
@@ -1865,7 +1870,7 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
     topRow.append(badge, transBar);
     alertBox.append(topRow);
 
-    const alertTextP = h("p", "map-alert-text", alertItem.title);
+    const alertTextP = h("p", "map-alert-text", cleanAlertText(alertItem.title));
     alertBox.append(alertTextP);
 
     const validSpan = h("span", "map-alert-valid", `Valid until: ${alertItem.valid_until}`);
@@ -1978,14 +1983,14 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
 
       if (lang === "en") {
         currentAlertText = transCache.en;
-        alertTextP.textContent = transCache.en;
+        alertTextP.textContent = cleanAlertText(transCache.en);
         updateWaLink(transCache.en, "en");
         return;
       }
 
       if (transCache[lang]) {
         currentAlertText = transCache[lang];
-        alertTextP.textContent = transCache[lang];
+        alertTextP.textContent = cleanAlertText(transCache[lang]);
         updateWaLink(transCache[lang], lang);
         return;
       }
@@ -1994,7 +1999,7 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
       if (dictHit) {
         transCache[lang] = dictHit;
         currentAlertText = dictHit;
-        alertTextP.textContent = dictHit;
+        alertTextP.textContent = cleanAlertText(dictHit);
         updateWaLink(dictHit, lang);
         return;
       }
@@ -2007,7 +2012,7 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
         if (res && res.translated) {
           transCache[lang] = res.translated;
           currentAlertText = res.translated;
-          alertTextP.textContent = res.translated;
+          alertTextP.textContent = cleanAlertText(res.translated);
           updateWaLink(res.translated, lang);
           return;
         }
@@ -2015,7 +2020,7 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
         console.warn("Translate API error:", e);
       }
       currentAlertText = alertItem.title;
-      alertTextP.textContent = alertItem.title;
+      alertTextP.textContent = cleanAlertText(alertItem.title);
       updateWaLink(alertItem.title, "en");
     }
 
@@ -2049,7 +2054,12 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
   return card;
 }
 
-      marker.bindPopup(() => createMapPopup(c, weatherData, aqiData, alertData));
+      marker.bindPopup(() => createMapPopup(c, weatherData, aqiData, alertData), {
+        maxWidth: 340,
+        minWidth: 260,
+        autoPanPadding: [16, 16],
+        className: "weather-map-popup",
+      });
       markerGroup.addLayer(marker);
     } catch (e) {
       console.warn("Failed to load marker for", c.name, e);
