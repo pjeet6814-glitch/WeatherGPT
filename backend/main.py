@@ -848,6 +848,47 @@ async def agri_endpoint(city: str = Query("Vadodara", max_length=80), crop: str 
     return compute_agri_advisory(w, crop)
 
 
+_trans_cache: dict[str, str] = {}
+
+class TranslateRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=1000)
+    language: str = Field("Hindi", max_length=50)
+
+
+@app.post("/api/translate")
+@app.post("/translate", include_in_schema=False)
+async def translate_endpoint(req: TranslateRequest):
+    """Translate weather alerts into Hindi, Gujarati, Marathi, Bengali, Tamil, etc."""
+    target = req.language if req.language in LANGUAGES else "Hindi"
+    key = f"{target.lower()}:{req.text.strip().lower()}"
+    if key in _trans_cache:
+        return {"ok": True, "language": target, "translated": _trans_cache[key]}
+
+    if not GEMINI_API_KEY:
+        return {"ok": False, "language": target, "translated": req.text, "error": "Gemini key missing"}
+
+    prompt = (
+        f"Translate the following Indian government official weather alert into {target} clearly, "
+        f"faithfully, and simply in one or two short sentences. Do not add greetings, bullet points, or extra text:\n\n{req.text}"
+    )
+    try:
+        translated = await ask_llm(prompt)
+        clean = translated.strip('`"\' \n')
+        _trans_cache[key] = clean
+        if len(_trans_cache) > 300:
+            _trans_cache.pop(next(iter(_trans_cache)))
+        return {"ok": True, "language": target, "translated": clean}
+    except Exception as e:
+        print(f"Translate error: {e}")
+        return {"ok": False, "language": target, "translated": req.text, "error": str(e)}
+
+
+@app.get("/api/translate")
+@app.get("/translate", include_in_schema=False)
+async def translate_get(text: str = Query(..., max_length=1000), language: str = Query("Hindi", max_length=50)):
+    return await translate_endpoint(TranslateRequest(text=text, language=language))
+
+
 @app.get("/api", include_in_schema=False)
 @app.get("/api/", include_in_schema=False)
 async def api_root():

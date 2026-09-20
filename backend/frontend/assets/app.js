@@ -429,7 +429,7 @@ function buildAlerts(a, city) {
     const waAlert = h("a", "btn-whatsapp", null);
     waAlert.target = "_blank";
     waAlert.rel = "noopener noreferrer";
-    waAlert.innerHTML = iconSvg("whatsapp") + "<span>Share on WhatsApp</span>";
+    waAlert.innerHTML = iconSvg("whatsapp") + "<span>🚨 Share Official Alert on WhatsApp</span>";
     const waText = `🚨 *OFFICIAL WEATHER ALERT*\n` +
       `📍 *Area:* ${al.mentions_city ? city : a.state}\n` +
       `📢 *Warning:* ${al.title}\n` +
@@ -1311,16 +1311,16 @@ async function initAssistant() {
       cp.addEventListener("click", () => copyText(d.answer, cp));
       acts.append(cp);
 
-      const wa = h("a", "linkbtn btn-whatsapp");
+      const wa = h("a", "btn-whatsapp");
       wa.target = "_blank";
       wa.rel = "noopener noreferrer";
-      wa.innerHTML = iconSvg("whatsapp") + "<span>Share on WhatsApp</span>";
+      wa.innerHTML = iconSvg("whatsapp") + "<span>📲 Share on WhatsApp</span>";
       let waMsg = `🌦️ *WeatherGPT Update for ${d.place || city}*\n\n` +
         `${d.answer}\n\n`;
       if (d.alerts && d.alerts.alerts && d.alerts.alerts.length) {
         waMsg += `⚠️ *Official Alert:* ${d.alerts.alerts[0].title} (Valid until ${d.alerts.alerts[0].valid_until})\n\n`;
       }
-      waMsg += `🔗 Checked on WeatherGPT (Smart India Hackathon 2026)`;
+      waMsg += `🔗 Checked on WeatherGPT: https://weather-gpt-theta.vercel.app/`;
       wa.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
       acts.append(wa);
 
@@ -1647,25 +1647,181 @@ async function initMap() {
 
       const marker = L.marker([c.lat, c.lon], { icon: customIcon });
 
-      const alertBanner = hasAlert
-        ? `<div style="background:#fee2e2; border-left:3px solid #dc2626; padding:6px 8px; margin:6px 0; border-radius:4px; font-size:12px; color:#991b1b;">
-             <b>⚠️ ${alertData.alerts[0].title}</b><br>
-             <span style="font-size:11px;">Valid until: ${alertData.alerts[0].valid_until}</span>
-           </div>`
-        : `<p style="color:#16a34a; font-size:12px; margin:4px 0;">✓ No unexpired SACHET alerts for this state.</p>`;
+const ALERT_DICTIONARY = [
+  { match: /thunderstorm/i, hi: "बिजली और गर्जना के साथ आंधी-तूफान की चेतावनी", gu: "વીજળીના કડાકા-ભડાકા સાથે વાવાઝોડાની ચેતવણી" },
+  { match: /lightning/i, hi: "આકાશી વીજળી પડવાનું જોખમ, સુરક્ષિત સ્થળે રહેવું", gu: "આકાશી વીજળી પડવાનું જોખમ, સુરક્ષિત સ્થળે રહેવું" },
+  { match: /heavy rain/i, hi: "भारी बारिश की आधिकारिक चेतावनी", gu: "ભારે વરસાદની સત્તાવાર ચેતવણી" },
+  { match: /very heavy rain/i, hi: "अत्यधिक भारी वर्षा का रेड अलर्ट", gu: "અતિ ભારે વરસાદનું રેડ એલર્ટ" },
+  { match: /squall|gusty wind/i, hi: "तेज आंधी और हवाएं चलने की चेतावनी", gu: "ઝડપી પવન અને વાવાઝોડાની ચેતવણી" },
+  { match: /heat wave/i, hi: "भीषण लू (हीट वेव) का प्रकोप", gu: "હીટવેવ (ગરમ લૂ) નો પ્રકોપ" },
+  { match: /hailstorm/i, hi: "ओलावृष्टि की संभावना", gu: "કરા પડવાની શક્યતા" },
+  { match: /dense fog/i, hi: "घना कोहरा छाए रहने की संभावना", gu: "ગાઢ ધુમ્મસની ચેતવણી" },
+];
 
-      const popupHtml = `
-        <div class="map-popup-card">
-          <h3>${c.name}, ${c.state}</h3>
-          <p>🌡️ <b>Temperature:</b> ${temp}°C (Feels like: ${current ? Math.round(current.apparent_temperature || current.temperature_2m) : "--"}°C)</p>
-          <p>💧 <b>Humidity:</b> ${current ? current.relative_humidity_2m : "--"}% | 💨 <b>Wind:</b> ${current ? num(current.wind_speed_10m) : "--"} km/h</p>
-          <p>🍃 <b>AQI:</b> <span style="font-weight:bold; color:${aqiCol};">${aqiCat}</span> (PM2.5: ${aqiData && aqiData.pm2_5 ? Math.round(aqiData.pm2_5) : "--"} µg/m³)</p>
-          ${alertBanner}
-          <a class="popup-btn" href="assistant.html?q=What%20is%20the%20weather%20and%20safety%20advisory%20for%20${encodeURIComponent(c.name)}%3F">💬 Ask WeatherGPT about ${c.name}</a>
-        </div>
-      `;
+function matchAlertDict(title, lang) {
+  if (!title) return null;
+  for (const item of ALERT_DICTIONARY) {
+    if (item.match.test(title)) {
+      return item[lang] || null;
+    }
+  }
+  return null;
+}
 
-      marker.bindPopup(popupHtml);
+function createMapPopup(c, weatherData, aqiData, alertData) {
+  const card = h("div", "map-popup-card");
+  const current = weatherData ? weatherData.forecast.current : null;
+  const temp = current ? Math.round(current.temperature_2m) : "--";
+  const aqiCat = aqiData && aqiData.category ? aqiData.category : "N/A";
+  const aqiCol = aqiData && aqiData.color ? aqiData.color : "#64748b";
+
+  const head = h("h3");
+  head.innerHTML = `<span>${c.name}</span> <span style="font-size:12px; font-weight:normal; color:var(--ink-soft);">${c.state}</span>`;
+  card.append(head);
+
+  const pTemp = h("p");
+  pTemp.innerHTML = `🌡️ <b>Temperature:</b> ${temp}°C <span style="font-size:12px; color:var(--ink-soft);">(Feels like ${current ? Math.round(current.apparent_temperature || current.temperature_2m) : "--"}°C)</span>`;
+  card.append(pTemp);
+
+  const pHum = h("p");
+  pHum.innerHTML = `💧 <b>Humidity:</b> ${current ? current.relative_humidity_2m : "--"}% &nbsp;|&nbsp; 💨 <b>Wind:</b> ${current ? num(current.wind_speed_10m) : "--"} km/h`;
+  card.append(pHum);
+
+  const pAqi = h("p");
+  pAqi.innerHTML = `🍃 <b>AQI:</b> <span style="font-weight:700; color:${aqiCol};">${aqiCat}</span> <span style="font-size:12px; color:var(--ink-soft);">(PM2.5: ${aqiData && aqiData.pm2_5 ? Math.round(aqiData.pm2_5) : "--"} µg/m³)</span>`;
+  card.append(pAqi);
+
+  const hasAlert = alertData && alertData.alerts && alertData.alerts.length > 0;
+
+  if (hasAlert) {
+    const alertItem = alertData.alerts[0];
+    const alertBox = h("div", "map-alert-box");
+
+    const topRow = h("div", "map-alert-top");
+    const badge = h("span", "map-alert-badge", "⚠️ Official Alert");
+
+    const transBar = h("div", "map-trans-bar");
+    const btnEn = h("button", "trans-chip active", "EN");
+    btnEn.type = "button";
+    btnEn.setAttribute("aria-label", "Show original English alert");
+
+    const btnHi = h("button", "trans-chip", "हिन्दी");
+    btnHi.type = "button";
+    btnHi.setAttribute("aria-label", "Translate alert into Hindi");
+
+    const btnGu = h("button", "trans-chip", "ગુજરાતી");
+    btnGu.type = "button";
+    btnGu.setAttribute("aria-label", "Translate alert into Gujarati");
+
+    transBar.append(btnEn, btnHi, btnGu);
+    topRow.append(badge, transBar);
+    alertBox.append(topRow);
+
+    const alertTextP = h("p", "map-alert-text", alertItem.title);
+    alertBox.append(alertTextP);
+
+    const validSpan = h("span", "map-alert-valid", `Valid until: ${alertItem.valid_until}`);
+    alertBox.append(validSpan);
+
+    card.append(alertBox);
+
+    const transCache = { en: alertItem.title, hi: null, gu: null };
+
+    // Attention-Grabbing WhatsApp Share Button for this alert
+    const waAlert = h("a", "btn-whatsapp map-wa-btn");
+    waAlert.target = "_blank";
+    waAlert.rel = "noopener noreferrer";
+    waAlert.innerHTML = iconSvg("whatsapp") + "<span>📲 Share Alert on WhatsApp</span>";
+
+    function updateWaLink(text, lang) {
+      const areaLabel = lang === "gu" ? "વિસ્તાર" : (lang === "hi" ? "क्षेत्र" : "Area");
+      const warnLabel = lang === "gu" ? "ચેતવણી" : (lang === "hi" ? "चेतावनी" : "Warning");
+      const validLabel = lang === "gu" ? "માન્યતા" : (lang === "hi" ? "वैधता" : "Valid until");
+      const emLabel = lang === "gu" ? "કટોકટીમાં 112 ડાયલ કરો." : (lang === "hi" ? "आपातकाल में 112 डायल करें।" : "In an emergency, call 112.");
+
+      const waMsg = `🚨 *WEATHER ALERT / હવામાન ચેતવણી*\n\n` +
+        `📍 *${areaLabel}:* ${c.name}, ${c.state}\n` +
+        `📢 *${warnLabel}:* ${text}\n` +
+        `⏳ *${validLabel}:* ${alertItem.valid_until}\n\n` +
+        `📞 ${emLabel}\n` +
+        `🔗 WeatherGPT Live Map: https://weather-gpt-theta.vercel.app/map.html`;
+      waAlert.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
+    }
+    updateWaLink(alertItem.title, "en");
+
+    async function setAlertLang(lang, activeBtn) {
+      [btnEn, btnHi, btnGu].forEach(b => b.classList.remove("active"));
+      activeBtn.classList.add("active");
+
+      if (lang === "en") {
+        alertTextP.textContent = transCache.en;
+        updateWaLink(transCache.en, "en");
+        return;
+      }
+
+      if (transCache[lang]) {
+        alertTextP.textContent = transCache[lang];
+        updateWaLink(transCache[lang], lang);
+        return;
+      }
+
+      const dictHit = matchAlertDict(alertItem.title, lang);
+      if (dictHit) {
+        transCache[lang] = dictHit;
+        alertTextP.textContent = dictHit;
+        updateWaLink(dictHit, lang);
+        return;
+      }
+
+      alertTextP.textContent = "Translating alert…";
+      const targetLangName = lang === "hi" ? "Hindi" : "Gujarati";
+      try {
+        const res = await api(`/api/translate?text=${encodeURIComponent(alertItem.title)}&language=${targetLangName}`);
+        if (res && res.translated) {
+          transCache[lang] = res.translated;
+          alertTextP.textContent = res.translated;
+          updateWaLink(res.translated, lang);
+          return;
+        }
+      } catch (e) {
+        console.warn("Translate API error:", e);
+      }
+      alertTextP.textContent = alertItem.title;
+      updateWaLink(alertItem.title, "en");
+    }
+
+    btnEn.addEventListener("click", () => setAlertLang("en", btnEn));
+    btnHi.addEventListener("click", () => setAlertLang("hi", btnHi));
+    btnGu.addEventListener("click", () => setAlertLang("gu", btnGu));
+
+    const acts = h("div", "map-popup-actions");
+    acts.append(waAlert);
+
+    const askBtn = h("a", "map-ask-btn", `💬 Ask WeatherGPT about ${c.name}`);
+    askBtn.href = `assistant.html?q=What%20is%20the%20weather%20and%20safety%20advisory%20for%20${encodeURIComponent(c.name)}%3F`;
+    acts.append(askBtn);
+
+    card.append(acts);
+  } else {
+    const noAlertP = h("p");
+    noAlertP.style.color = "#16a34a";
+    noAlertP.style.fontSize = "12.5px";
+    noAlertP.style.margin = "8px 0";
+    noAlertP.textContent = "✓ No unexpired SACHET alerts for this state.";
+    card.append(noAlertP);
+
+    const acts = h("div", "map-popup-actions");
+    const askBtn = h("a", "map-ask-btn", `💬 Ask WeatherGPT about ${c.name}`);
+    askBtn.href = `assistant.html?q=What%20is%20the%20weather%20and%20safety%20advisory%20for%20${encodeURIComponent(c.name)}%3F`;
+    acts.append(askBtn);
+
+    card.append(acts);
+  }
+
+  return card;
+}
+
+      marker.bindPopup(() => createMapPopup(c, weatherData, aqiData, alertData));
       markerGroup.addLayer(marker);
     } catch (e) {
       console.warn("Failed to load marker for", c.name, e);
