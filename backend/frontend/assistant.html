@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ask WeatherGPT</title>
+<meta name="description" content="Ask about rain, heat or warnings and get a short answer in your language.">
+<script>try{var t=localStorage.getItem("wgpt_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C3440'/%3E%3Cpath d='M7 10h18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 16v9M16 16v11M21 16v6' stroke='%238FD3F0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<meta name="theme-color" content="#0C3440">
+<link rel="manifest" href="manifest.json">
+<script src="assets/config.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js" defer></script>
+</head>
+<body data-page="assistant">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <div class="offline-banner" id="offline-banner" hidden>
+    <div class="wrap" data-i18n="offline_msg">⚠️ You are offline. Showing last cached weather forecast &amp; emergency guidance.</div>
+  </div>
+  <div class="bar wrap">
+    <a class="brand" href="index.html" aria-label="WeatherGPT home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="cl" d="M5 9h22"/><path class="st" d="M10 15v10M16 15v13M22 15v7"/></svg>
+      <span>WeatherGPT</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html" data-i18n="nav_home">Home</a>
+        <a href="assistant.html" aria-current="page" data-i18n="nav_ask">Ask</a>
+        <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
+        <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="climate.html" data-i18n="nav_climate">Climate</a>
+        <a href="safety.html" data-i18n="nav_safety">Safety</a>
+        <a href="about.html" data-i18n="nav_about">About</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language selection">
+      <button type="button" class="lang-btn active" data-lang="en" onclick="setUILang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang="hi" onclick="setUILang('hi')">हिं</button>
+      <button type="button" class="lang-btn" data-lang="gu" onclick="setUILang('gu')">ગુજ</button>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Switch to dark mode" data-i18n-aria="theme_btn"></button>
+    <a class="btn small" href="assistant.html" data-i18n="btn_ask_nav">Ask a question</a>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="nav" data-i18n="menu_btn">Menu</button>
+  </div>
+</header>
+
+<main id="main" class="wrap assistant">
+  <aside class="rail" aria-label="Settings">
+    <h1 data-i18n="assistant_h">Ask</h1>
+    <p class="lede" data-i18n="assistant_lede">Pick your place and who you are, choose a language, then ask about the weather or warnings.</p>
+    <div class="field"><label for="city" data-i18n="city_label">Place</label><input id="city" type="text" autocomplete="off" placeholder="City or town"></div>
+    <div class="field">
+      <label for="role" data-i18n="role_label">I am a</label>
+      <select id="role">
+        <option value="general" data-i18n="role_general">General user</option>
+        <option value="farmer" data-i18n="role_farmer">Farmer</option>
+        <option value="commuter" data-i18n="role_commuter">Commuter</option>
+      </select>
+    </div>
+    <div class="today" id="rail-today" aria-live="polite"></div>
+  </aside>
+
+  <section class="chat" aria-label="Conversation">
+    <fieldset class="lang-pills">
+      <legend class="sr">Reply language</legend>
+      <label><input type="radio" name="lang" value="English" checked><span lang="en">English</span></label>
+      <label><input type="radio" name="lang" value="Hindi"><span lang="hi">हिंदी</span></label>
+      <label><input type="radio" name="lang" value="Gujarati"><span lang="gu">ગુજરાતી</span></label>
+      <label><input type="radio" name="lang" value="Marathi"><span lang="mr">मराठी</span></label>
+      <label><input type="radio" name="lang" value="Bengali"><span lang="bn">বাংলা</span></label>
+      <label><input type="radio" name="lang" value="Tamil"><span lang="ta">தமிழ்</span></label>
+    </fieldset>
+    <div class="log" id="log" aria-live="polite">
+      <div class="empty" id="empty">
+        <h2 data-i18n="empty_h">Ask about rain, heat or warnings for your area</h2>
+        <p data-i18n="empty_p">Try one of these, or type your own question.</p>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+    <div class="composer">
+      <div class="row">
+        <label class="sr" for="msg">Your question</label>
+        <textarea id="msg" rows="1" placeholder="Ask about the weather or warnings" data-i18n-placeholder="msg_placeholder"></textarea>
+        <button class="iconbtn" id="mic" type="button" aria-pressed="false" aria-label="Speak your question" data-i18n-aria="mic_label" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+        <span class="sr" id="mic-status" aria-live="polite"></span>
+        <button class="btn" id="send" type="button" data-i18n="cta_ask">Ask</button>
+      </div>
+      <p class="help">Answers are written by AI from the forecast and alerts shown. Check the numbers on the forecast page. In an emergency, call 112.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <h2>WeatherGPT</h2>
+      <p data-i18n="foot_desc">Forecasts and official warnings, explained in your language. A prototype built for Smart India Hackathon 2026, problem statement SIH26068.</p>
+    </div>
+    <div>
+      <h2 data-i18n="foot_sources">Data sources</h2>
+      <ul>
+        <li>Forecasts and climate averages: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
+        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a>, which carries IMD and state warnings</li>
+      </ul>
+    </div>
+    <div>
+      <h2 data-i18n="foot_emergency">In an emergency</h2>
+      <p data-i18n="foot_emergency_p">Call 112 and follow instructions from your local authorities. WeatherGPT can be wrong and is not an emergency service.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

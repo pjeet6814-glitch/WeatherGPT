@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Safety guide: WeatherGPT</title>
+<meta name="description" content="Plain steps for heavy rain and floods, lightning, heat and cyclones, plus a packing checklist.">
+<script>try{var t=localStorage.getItem("wgpt_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C3440'/%3E%3Cpath d='M7 10h18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 16v9M16 16v11M21 16v6' stroke='%238FD3F0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<meta name="theme-color" content="#0C3440">
+<link rel="manifest" href="manifest.json">
+<script src="assets/config.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js" defer></script>
+</head>
+<body data-page="safety">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <div class="offline-banner" id="offline-banner" hidden>
+    <div class="wrap" data-i18n="offline_msg">⚠️ You are offline. Showing last cached weather forecast &amp; emergency guidance.</div>
+  </div>
+  <div class="bar wrap">
+    <a class="brand" href="index.html" aria-label="WeatherGPT home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="cl" d="M5 9h22"/><path class="st" d="M10 15v10M16 15v13M22 15v7"/></svg>
+      <span>WeatherGPT</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html" data-i18n="nav_home">Home</a>
+        <a href="assistant.html" data-i18n="nav_ask">Ask</a>
+        <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
+        <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="climate.html" data-i18n="nav_climate">Climate</a>
+        <a href="safety.html" aria-current="page" data-i18n="nav_safety">Safety</a>
+        <a href="about.html" data-i18n="nav_about">About</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language selection">
+      <button type="button" class="lang-btn active" data-lang="en" onclick="setUILang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang="hi" onclick="setUILang('hi')">हिं</button>
+      <button type="button" class="lang-btn" data-lang="gu" onclick="setUILang('gu')">ગુજ</button>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Switch to dark mode" data-i18n-aria="theme_btn"></button>
+    <a class="btn small" href="assistant.html" data-i18n="btn_ask_nav">Ask a question</a>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="nav" data-i18n="menu_btn">Menu</button>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1 data-i18n="card_sf_h">Before, during and after severe weather</h1>
+    <p class="lede" data-i18n="card_sf_p">General guidance for the most common weather dangers in India. Your state disaster management authority's instructions always come first.</p>
+    <div class="callout"><p><b>In an emergency, call 112.</b> Do not wait for an alert to reach you if you feel in danger.</p></div>
+  </div>
+
+  <div class="safety-grid">
+    <nav class="toc" aria-label="On this page">
+      <a href="#flood">Heavy rain and floods</a>
+      <a href="#lightning">Lightning</a>
+      <a href="#heat">Heat</a>
+      <a href="#cyclone">Cyclones</a>
+      <a href="#kit-section">Emergency kit</a>
+    </nav>
+
+    <div>
+      <section class="topic" id="flood">
+        <h2>Heavy rain and floods</h2>
+        <p>Flood water can rise fast and hides open drains, potholes and live wires.</p>
+        <div class="cols">
+          <div>
+            <h3>Do</h3>
+            <ul class="ticks yes">
+              <li>Charge phones and power banks when a warning is issued.</li>
+              <li>Move papers and valuables to a high shelf or a waterproof bag.</li>
+              <li>Leave early for higher ground or an upper floor if authorities ask you to.</li>
+              <li>Boil or treat drinking water after floods.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Avoid</h3>
+            <ul class="ticks no">
+              <li>Walking, swimming or driving through flood water.</li>
+              <li>Touching electrical items or fallen wires when wet.</li>
+              <li>Staying in a basement as water rises.</li>
+              <li>Going near swollen streams, drains and low bridges.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic" id="lightning">
+        <h2>Lightning</h2>
+        <p>If you can hear thunder, you are close enough to be struck.</p>
+        <div class="cols">
+          <div>
+            <h3>Do</h3>
+            <ul class="ticks yes">
+              <li>Go inside a building or a vehicle with a solid roof.</li>
+              <li>Wait about 30 minutes after the last thunder before going out.</li>
+              <li>Stay away from windows during the storm.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Avoid</h3>
+            <ul class="ticks no">
+              <li>Open fields, hilltops and single tall trees.</li>
+              <li>Water, including pools, rivers and boats.</li>
+              <li>Metal fences and poles.</li>
+              <li>Plumbing and wired devices during the storm.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic" id="heat">
+        <h2>Heat</h2>
+        <p>Children, older people, outdoor workers and people with health conditions are most at risk.</p>
+        <div class="cols">
+          <div>
+            <h3>Do</h3>
+            <ul class="ticks yes">
+              <li>Drink water often, even if you do not feel thirsty. ORS, buttermilk and lemon water help.</li>
+              <li>Stay out of the midday sun and cover your head outdoors.</li>
+              <li>Wear light, loose cotton clothes.</li>
+              <li>Check on neighbours who live alone.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Avoid, and watch for heat stroke</h3>
+            <ul class="ticks no">
+              <li>Hard outdoor work at midday.</li>
+              <li>Leaving children or pets in a parked vehicle.</li>
+              <li>Alcohol and very sugary drinks.</li>
+            </ul>
+            <p>Very hot skin, confusion or fainting can mean heat stroke. Call 112, move the person to shade and cool them with wet cloths.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic" id="cyclone">
+        <h2>Cyclones</h2>
+        <p>Follow evacuation orders as soon as they are given. Roads can close quickly.</p>
+        <div class="cols">
+          <div>
+            <h3>Do</h3>
+            <ul class="ticks yes">
+              <li>Keep your emergency kit and phone chargers ready.</li>
+              <li>Bring in or tie down loose items outside.</li>
+              <li>Stay indoors, away from windows, once the storm arrives.</li>
+              <li>Return home only when authorities say it is safe to do so.</li>
+              <li>Fishing communities: do not go to sea while a warning is in force.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Avoid</h3>
+            <ul class="ticks no">
+              <li>Going out during a sudden calm. It may be the eye of the storm, and strong winds return.</li>
+              <li>Ignoring an evacuation order because the weather looks calm.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="topic" id="kit-section">
+        <h2 id="kit-title">Emergency kit</h2>
+        <p>Pack these before the season starts. Your ticks are saved on this device.</p>
+        <div class="progress" id="kit-bar" role="progressbar" aria-labelledby="kit-title" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><i></i></div>
+        <p class="kit-count" id="kit-count" aria-live="polite"></p>
+        <ul class="kit" id="kit"></ul>
+        <p class="note">This is general guidance and does not replace instructions from your local authorities.</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <h2>WeatherGPT</h2>
+      <p data-i18n="foot_desc">Forecasts and official warnings, explained in your language. A prototype built for Smart India Hackathon 2026, problem statement SIH26068.</p>
+    </div>
+    <div>
+      <h2 data-i18n="foot_sources">Data sources</h2>
+      <ul>
+        <li>Forecasts and climate averages: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
+        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a>, which carries IMD and state warnings</li>
+      </ul>
+    </div>
+    <div>
+      <h2 data-i18n="foot_emergency">In an emergency</h2>
+      <p data-i18n="foot_emergency_p">Call 112 and follow instructions from your local authorities. WeatherGPT can be wrong and is not an emergency service.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

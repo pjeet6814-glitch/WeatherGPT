@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5-day forecast: WeatherGPT</title>
+<meta name="description" content="Chance of rain, expected rainfall and temperatures for the next five days.">
+<script>try{var t=localStorage.getItem("wgpt_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C3440'/%3E%3Cpath d='M7 10h18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 16v9M16 16v11M21 16v6' stroke='%238FD3F0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<meta name="theme-color" content="#0C3440">
+<link rel="manifest" href="manifest.json">
+<script src="assets/config.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js" defer></script>
+</head>
+<body data-page="forecast">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <div class="offline-banner" id="offline-banner" hidden>
+    <div class="wrap" data-i18n="offline_msg">⚠️ You are offline. Showing last cached weather forecast &amp; emergency guidance.</div>
+  </div>
+  <div class="bar wrap">
+    <a class="brand" href="index.html" aria-label="WeatherGPT home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="cl" d="M5 9h22"/><path class="st" d="M10 15v10M16 15v13M22 15v7"/></svg>
+      <span>WeatherGPT</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html" data-i18n="nav_home">Home</a>
+        <a href="assistant.html" data-i18n="nav_ask">Ask</a>
+        <a href="forecast.html" aria-current="page" data-i18n="nav_forecast">Forecast</a>
+        <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="climate.html" data-i18n="nav_climate">Climate</a>
+        <a href="safety.html" data-i18n="nav_safety">Safety</a>
+        <a href="about.html" data-i18n="nav_about">About</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language selection">
+      <button type="button" class="lang-btn active" data-lang="en" onclick="setUILang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang="hi" onclick="setUILang('hi')">हिं</button>
+      <button type="button" class="lang-btn" data-lang="gu" onclick="setUILang('gu')">ગુજ</button>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Switch to dark mode" data-i18n-aria="theme_btn"></button>
+    <a class="btn small" href="assistant.html" data-i18n="btn_ask_nav">Ask a question</a>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="nav" data-i18n="menu_btn">Menu</button>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <div class="page-head">
+    <h1 data-i18n="card_fc_h">The next 5 days</h1>
+    <p class="lede" data-i18n="card_fc_p">See how much rain to expect each day, not only whether it will rain.</p>
+    <form class="toolbar" id="fc-form">
+      <div class="field"><label for="city" data-i18n="city_label">Town or city</label><input id="city" type="text" autocomplete="off" placeholder="For example, Vadodara" data-i18n-placeholder="city_placeholder"></div>
+      <button class="btn" type="submit">Show forecast</button>
+    </form>
+    <p class="note" id="fc-status" aria-live="polite"></p>
+  </div>
+
+  <section aria-labelledby="h-now">
+    <h2 class="sr" id="h-now">Right now</h2>
+    <dl class="now-grid" id="fc-now"></dl>
+  </section>
+
+  <section class="section light" style="padding-top:0" aria-labelledby="h-hourly">
+    <h2 id="h-hourly">Next 24 hours</h2>
+    <p class="lede">Hourly temperature, weather conditions, and rain chance.</p>
+    <div id="fc-hourly"></div>
+  </section>
+
+  <section class="section light" aria-labelledby="h-rain">
+    <h2 id="h-rain">Rain</h2>
+    <p class="lede">Each line hangs from a cloud. The longer the line, the more rain is expected that day.</p>
+    <div class="chart" id="fc-rain"></div>
+  </section>
+
+  <section class="section light" style="padding-top:0" aria-labelledby="h-temp">
+    <h2 id="h-temp">Temperature</h2>
+    <p class="lede">The bar runs from each day's lowest to its highest temperature.</p>
+    <div class="chart" id="fc-temp"></div>
+  </section>
+
+  <section class="section" style="padding-top:0" aria-labelledby="h-cmp">
+    <h2 id="h-cmp">Compared with a normal year</h2>
+    <div class="cmp" id="fc-climate" aria-live="polite"></div>
+    <p class="note"><a href="climate.html">See the full climate page</a></p>
+  </section>
+
+  <section class="section" style="padding-top:0" aria-labelledby="h-table">
+    <h2 id="h-table">Day by day</h2>
+    <p class="lede">"Rain likely" needs a 60% chance and at least 2 mm. A day with a lower chance but 2 mm or more is marked "Rain possible".</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Day</th><th scope="col">Chance of rain</th><th scope="col">Expected rain</th><th scope="col">Reading</th><th scope="col">High and low</th></tr></thead>
+        <tbody id="fc-table"></tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:16px">This forecast comes from a weather model, not from IMD. For official warnings, open the <a href="alerts.html">alerts page</a>.</p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <h2>WeatherGPT</h2>
+      <p data-i18n="foot_desc">Forecasts and official warnings, explained in your language. A prototype built for Smart India Hackathon 2026, problem statement SIH26068.</p>
+    </div>
+    <div>
+      <h2 data-i18n="foot_sources">Data sources</h2>
+      <ul>
+        <li>Forecasts and climate averages: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
+        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a>, which carries IMD and state warnings</li>
+      </ul>
+    </div>
+    <div>
+      <h2 data-i18n="foot_emergency">In an emergency</h2>
+      <p data-i18n="foot_emergency_p">Call 112 and follow instructions from your local authorities. WeatherGPT can be wrong and is not an emergency service.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
