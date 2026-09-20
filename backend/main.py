@@ -701,6 +701,12 @@ ROLE_TEXT = {
     "general": "an ordinary member of the public (do not assume any job, rank or profession)",
     "farmer": "a farmer",
     "commuter": "a daily commuter travelling by road",
+    "student": "a student or parent planning school/college attendance (prioritize morning travel, school safety, heavy rain transit, and heatwave precautions)",
+    "outdoor_worker": "an outdoor or construction worker (prioritize heatstroke prevention, hydration, lightning shelter protocols, and heavy scaffold wind safety)",
+    "fisherman": "a fisherman or coastal resident (prioritize sea condition advisories, offshore wind speeds, high swell waves, and port warning flags)",
+    "elderly": "a senior citizen or health-sensitive individual (prioritize Air Quality PM2.5 breathing advisories, extreme temperature stress, and safe outdoor hours)",
+    "delivery": "a two-wheeler delivery partner or gig rider (prioritize road waterlogging, slippery road risks, gusty winds on bikes, and rain gear preparedness)",
+    "tourist": "a traveler, tourist, or outdoor event organizer (prioritize sightseeing weather, open-air gathering safety, rain timing, and inter-city travel conditions)",
 }
 
 

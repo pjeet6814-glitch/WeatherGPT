@@ -38,6 +38,36 @@ const EXAMPLES = {
     Hindi: ["क्या आज छाता ले जाना चाहिए?", "क्या कल बारिश होगी?", "क्या आज यात्रा पर असर डालने वाली कोई चेतावनी है?"],
     Gujarati: ["શું આજે છત્રી લઈ જવી જોઈએ?", "શું કાલે વરસાદ પડશે?", "શું આજે મુસાફરીને અસર કરે તેવી કોઈ ચેતવણી છે?"],
   },
+  student: {
+    English: ["Is it safe to go to school or college today?", "Will it rain heavily during morning commute hours?", "Are there any heat advisories for outdoor sports?"],
+    Hindi: ["क्या आज स्कूल/कॉलेज जाने के लिए मौसम सुरक्षित है?", "क्या सुबह स्कूल के समय भारी बारिश होगी?", "क्या खेलकूद के लिए लू की चेतावनी है?"],
+    Gujarati: ["શું આજે સ્કૂલ કે કોલેજ જવા માટે હવામાન સલામત છે?", "શું સવારે સ્કૂલના સમયે ભારે વરસાદ પડશે?", "શું ગરમી કે લૂની કોઈ ચેતવણી છે?"],
+  },
+  outdoor_worker: {
+    English: ["Is it safe to work outdoors on scaffolds today?", "What is the peak heat time to avoid direct sun?", "Are there lightning or thunderstorm warnings?"],
+    Hindi: ["क्या आज बाहर काम करना सुरक्षित है?", "धूप से बचने के लिए सबसे गर्म समय कौन सा रहेगा?", "क्या बिजली गिरने या आंधी-तूफान की चेतावनी है?"],
+    Gujarati: ["શું આજે બહાર કામ કરવું સલામત છે?", "લૂથી બચવા માટે સૌથી ગરમ સમય કયો રહેશે?", "શું વીજળી કે વાવાઝોડાની કોઈ ચેતવણી છે?"],
+  },
+  fisherman: {
+    English: ["Are there high wind or squall alerts for the coast?", "Is it safe to venture into the sea in the next 24 hours?", "What is the wind speed and wave forecast?"],
+    Hindi: ["क्या तटीय क्षेत्र के लिए तेज हवा या तूफान का अलर्ट है?", "क्या अगले 24 घंटों में समुद्र में जाना सुरक्षित है?", "हवा की गति और मौसम का पूर्वानुमान क्या है?"],
+    Gujarati: ["શું દરિયાકાંઠે ભારે પવન કે વાવાઝોડાની ચેતવણી છે?", "શું આગામી 24 કલાકમાં દરિયો ખેડવો સલામત છે?", "પવનની ગતિ અને દરિયાનું હવામાન કેવું રહેશે?"],
+  },
+  elderly: {
+    English: ["Is the air quality safe for a morning walk?", "What time is best for elderly people to go outside today?", "Will extreme heat or pollution trigger breathing issues?"],
+    Hindi: ["क्या सुबह की सैर के लिए हवा की गुणवत्ता ठीक है?", "बुजुर्गों के लिए आज बाहर जाने का सबसे अच्छा समय कौन सा है?", "क्या प्रदूषण या गर्मी से सांस लेने में परेशानी होगी?"],
+    Gujarati: ["શું સવારની વોક માટે હવાની ગુણવત્તા સારી છે?", "વરિષ્ઠ નાગરિકો માટે આજે બહાર જવા કયો સમય શ્રેષ્ઠ છે?", "શું પ્રદૂષણ કે ગરમીથી શ્વાસ લેવામાં તકલીફ થઈ શકે?"],
+  },
+  delivery: {
+    English: ["Will rain or waterlogged roads affect deliveries today?", "Are there alerts for gusty winds while riding bikes?", "What should I prepare for tonight's delivery shift?"],
+    Hindi: ["क्या आज बारिश से जलभराव या डिलीवरी में बाधा आएगी?", "क्या बाइक चलाने के लिए तेज हवा का अलर्ट है?", "आज रात की डिलीवरी शिफ्ट के लिए क्या सावधानी रखूं?"],
+    Gujarati: ["શું આજે વરસાદ કે પાણી ભરાવાથી ડિલિવરીમાં અડચણ આવશે?", "શું બાઇક ચલાવતી વખતે ભારે પવનનું જોખમ છે?", "આજની ડિલિવરી શિફ્ટ માટે શું સાવચેતી રાખવી?"],
+  },
+  tourist: {
+    English: ["Is today good for sightseeing and travel?", "Will it rain during evening outdoor events?", "What weather precautions should I pack for?"],
+    Hindi: ["क्या आज पर्यटन और बाहर घूमने के लिए मौसम अनुकूल है?", "क्या शाम के आउटडोर कार्यक्रम में बारिश होगी?", "यात्रा के लिए किन मौसम सावधानियों की जरूरत है?"],
+    Gujarati: ["શું આજે ફરવા જવા અને જોવાલાયક સ્થળો માટે હવામાન સારું છે?", "શું સાંજના આઉટડોર કાર્યક્રમોમાં વરસાદ પડશે?", "મુસાફરી માટે કઈ સાવચેતી રાખવી જોઈએ?"],
+  },
 };
 const QUICK_CITIES = ["Vadodara", "Ahmedabad", "Mumbai", "Delhi", "Chennai"];
 const STATES = ["Andaman and Nicobar Islands", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chandigarh",
