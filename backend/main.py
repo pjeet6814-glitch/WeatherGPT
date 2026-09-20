@@ -542,8 +542,15 @@ async def climate(city: str = Query("Vadodara", max_length=80)):
 @app.get("/api", include_in_schema=False)
 @app.get("/api/", include_in_schema=False)
 @app.get("/api/index.py", include_in_schema=False)
-async def api_root():
-    return {"ok": True, "message": "WeatherGPT API is operational", "docs": "/api/docs"}
+async def api_root(request: Request):
+    return {
+        "ok": True,
+        "url": str(request.url),
+        "path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "query": str(request.url.query),
+        "headers": dict(request.headers),
+    }
 
 
 @app.post("/api/chat")
