@@ -404,6 +404,91 @@ async def safe_climate(weather: dict):
         return None
 
 
+# ----------------------------------------------------------------- air quality (AQI)
+AQI_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+_aqi_cache: dict[str, dict] = {}
+
+async def get_aqi(city: str) -> dict:
+    key = city.lower().strip()
+    now = time.monotonic()
+    if key in _aqi_cache and now - _aqi_cache[key]["time"] < 600:
+        return _aqi_cache[key]["data"]
+
+    w = await get_weather(city)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(AQI_URL, params={
+                "latitude": w["latitude"],
+                "longitude": w["longitude"],
+                "current": "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,us_aqi,european_aqi",
+                "timezone": "auto",
+            })
+            r.raise_for_status()
+            cur = r.json().get("current", {})
+            pm25 = float(cur.get("pm2_5", 0.0) or 0.0)
+            pm10 = float(cur.get("pm10", 0.0) or 0.0)
+
+            # Indian CPCB National Air Quality Index (NAQI) Standards
+            if pm25 <= 30:
+                cat, code, col = "Good", "good", "#16a34a"
+                adv = "Air quality is clean and healthy for all outdoor activities."
+            elif pm25 <= 60:
+                cat, code, col = "Satisfactory", "satisfactory", "#65a30d"
+                adv = "Air quality is acceptable. Minor breathing discomfort possible for sensitive individuals."
+            elif pm25 <= 90:
+                cat, code, col = "Moderate", "moderate", "#d97706"
+                adv = "Breathing discomfort possible for children, elderly, and people with respiratory conditions."
+            elif pm25 <= 120:
+                cat, code, col = "Poor", "poor", "#ea580c"
+                adv = "Unhealthy air. Limit prolonged outdoor exertion; consider wearing a mask."
+            elif pm25 <= 250:
+                cat, code, col = "Very Poor", "very_poor", "#dc2626"
+                adv = "Significantly poor air. Vulnerable groups must stay indoors; avoid vigorous exercise."
+            else:
+                cat, code, col = "Severe", "severe", "#7c2d12"
+                adv = "Emergency pollution level. Serious health hazard; keep windows closed and avoid outdoor exposure."
+
+            data = {
+                "place": w["place"],
+                "city": city,
+                "pm2_5": pm25,
+                "pm10": pm10,
+                "us_aqi": cur.get("us_aqi"),
+                "european_aqi": cur.get("european_aqi"),
+                "no2": cur.get("nitrogen_dioxide"),
+                "so2": cur.get("sulphur_dioxide"),
+                "co": cur.get("carbon_monoxide"),
+                "o3": cur.get("ozone"),
+                "category": cat,
+                "code": code,
+                "color": col,
+                "advisory": adv,
+                "fetched_at": w["fetched_at"],
+            }
+            _aqi_cache[key] = {"time": now, "data": data}
+            return data
+    except Exception as e:
+        print(f"AQI fetch error for {city}: {e}")
+        return {
+            "place": w["place"],
+            "city": city,
+            "pm2_5": None,
+            "category": "Unavailable",
+            "code": "unavailable",
+            "color": "#64748b",
+            "advisory": "Air quality sensors currently unavailable for this area.",
+            "fetched_at": w["fetched_at"],
+        }
+
+
+def describe_aqi(aqi) -> str:
+    if not aqi or aqi.get("pm2_5") is None:
+        return "Air quality data is currently unavailable."
+    return (f"- PM2.5: {aqi['pm2_5']} µg/m³ | PM10: {aqi.get('pm10')} µg/m³\n"
+            f"- Category (Indian CPCB standards): {aqi['category']}\n"
+            f"- Health Advisory: {aqi['advisory']}")
+
+
 # -------------------------------------------------------------------- LLM
 ROLE_TEXT = {
     "general": "an ordinary member of the public (do not assume any job, rank or profession)",
@@ -412,7 +497,7 @@ ROLE_TEXT = {
 }
 
 
-def build_prompt(req: ChatRequest, weather: dict, alerts: dict, climate=None) -> str:
+def build_prompt(req: ChatRequest, weather: dict, alerts: dict, climate=None, aqi=None) -> str:
     stale = " (NOTE: data may be outdated, tell the user)" if weather.get("stale") else ""
     role_text = ROLE_TEXT.get(req.role, "an ordinary member of the public")
     return f"""You are WeatherGPT, a weather assistant for India.
@@ -432,6 +517,7 @@ Rules:
   * probability under 60% but 2 mm or more: rain possible but uncertain (give both the probability and the mm)
   * probability under 60% and under 2 mm: mostly dry
   Never call a day dry if its expected rainfall is 2 mm or more.
+- If the user asks about air quality, pollution, morning walk, or breathing health, state the PM2.5, the Indian CPCB category, and the official health advisory.
 - Mention irrigation or crops only if the user is a farmer or asks about them; never give a definite irrigation order, say it depends on soil moisture and crop.
 - The forecast covers 5 days, so say "next 5 days", not "this week".
 - Climate context is the average of the last {CLIMATE_YEARS} years for the same dates (ERA5 model data, not weather stations). Use it only when the user asks whether the weather is normal, unusual or how it compares with the past, or when the forecast is much wetter or drier than usual. Say "compared with the last {CLIMATE_YEARS} years". You have no data on climate change or long-term trends, so never comment on them.
@@ -440,6 +526,8 @@ Place: {weather['place']}{stale}
 Weather source: {weather['source']} at {weather['fetched_at']}
 Official alerts:
 {describe_alerts(alerts)}
+Air Quality (AQI):
+{describe_aqi(aqi)}
 Climate context:
 {describe_climate(climate)}
 Weather data (JSON): {weather['forecast']}
@@ -539,6 +627,13 @@ async def climate(city: str = Query("Vadodara", max_length=80)):
     return climate_payload(w, c)
 
 
+@app.get("/api/aqi")
+@app.get("/aqi", include_in_schema=False)
+async def aqi_endpoint(city: str = Query("Vadodara", max_length=80)):
+    """Live Air Quality Index (AQI) with PM2.5, PM10 and Indian CPCB health advisory."""
+    return await get_aqi(city)
+
+
 @app.get("/api", include_in_schema=False)
 @app.get("/api/", include_in_schema=False)
 async def api_root():
@@ -554,9 +649,9 @@ async def chat(req: ChatRequest, request: Request):
     if req.language not in LANGUAGES:
         req.language = "English"
     weather_data = await get_weather(req.city)
-    alert_data, climate_data = await asyncio.gather(
-        get_alerts(weather_data.get("state", ""), req.city), safe_climate(weather_data))
-    answer = await ask_llm(build_prompt(req, weather_data, alert_data, climate_data))
+    alert_data, climate_data, aqi_data = await asyncio.gather(
+        get_alerts(weather_data.get("state", ""), req.city), safe_climate(weather_data), get_aqi(req.city))
+    answer = await ask_llm(build_prompt(req, weather_data, alert_data, climate_data, aqi=aqi_data))
     
     current = weather_data.get("forecast", {}).get("current", {})
     daily = weather_data.get("forecast", {}).get("daily", {})
@@ -597,7 +692,13 @@ async def chat(req: ChatRequest, request: Request):
             "Official NDMA SACHET alerts displayed verbatim without AI modification",
             "Prohibition against false 'no risk' or '100% safe' claims",
             "Honest reporting of expired or unavailable alert feeds"
-        ]
+        ],
+        "aqi": {
+            "pm2_5": aqi_data.get("pm2_5"),
+            "pm10": aqi_data.get("pm10"),
+            "category": aqi_data.get("category"),
+            "advisory": aqi_data.get("advisory"),
+        },
     }
     return {
         "answer": answer,
@@ -605,6 +706,7 @@ async def chat(req: ChatRequest, request: Request):
         "source": weather_data["source"],
         "fetched_at": weather_data["fetched_at"],
         "alerts": alert_data,
+        "aqi": aqi_data,
         "grounding": grounding,
     }
 

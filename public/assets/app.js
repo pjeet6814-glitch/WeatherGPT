@@ -159,6 +159,43 @@ const getAlerts = (state, city) => api(`/api/alerts?state=${encodeURIComponent(s
 
 const getClimate = (city) => api(`/api/climate?city=${encodeURIComponent(city)}`, undefined, city);
 
+async function getAqi(city) {
+  try {
+    return await api(`/api/aqi?city=${encodeURIComponent(city)}`, undefined, city);
+  } catch (e) {
+    try {
+      const geoR = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+      const geoD = await geoR.json();
+      if (!geoD.results || !geoD.results.length) throw e;
+      const place = geoD.results[0];
+      const r = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${place.latitude}&longitude=${place.longitude}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,us_aqi&timezone=auto`);
+      const d = await r.json();
+      const pm25 = (d.current && d.current.pm2_5) || 0;
+      let cat = "Good", code = "good", adv = "Air quality is clean and healthy for all outdoor activities.";
+      if (pm25 > 250) { cat = "Severe"; code = "severe"; adv = "Emergency pollution level. Avoid outdoor exposure."; }
+      else if (pm25 > 120) { cat = "Very Poor"; code = "very_poor"; adv = "Significantly poor air. Vulnerable groups stay indoors."; }
+      else if (pm25 > 90) { cat = "Poor"; code = "poor"; adv = "Unhealthy air. Limit prolonged outdoor exertion."; }
+      else if (pm25 > 60) { cat = "Moderate"; code = "moderate"; adv = "Breathing discomfort possible for sensitive people."; }
+      else if (pm25 > 30) { cat = "Satisfactory"; code = "satisfactory"; adv = "Air quality is acceptable. Minor discomfort possible for sensitive groups."; }
+      return { place: place.name, pm2_5: pm25, pm10: d.current.pm10, category: cat, code, advisory: adv };
+    } catch (_) {
+      throw e;
+    }
+  }
+}
+
+function renderAqiCard(aqi) {
+  const card = h("div", "aqi-card");
+  card.innerHTML = `
+    <div class="aqi-header">
+      <span class="aqi-badge ${aqi.code}">${aqi.category}</span>
+      <span class="aqi-title">Air Quality (AQI) • <b>PM2.5: ${Math.round(aqi.pm2_5)} µg/m³</b>${aqi.pm10 != null ? ` | PM10: ${Math.round(aqi.pm10)} µg/m³` : ""}</span>
+    </div>
+    <p class="aqi-advisory">💡 ${aqi.advisory}</p>
+  `;
+  return card;
+}
+
 function errBox(e) {
   const box = h("div", "error");
   box.append(h("p", null, e.message));
@@ -710,6 +747,14 @@ async function initHome() {
       const more = h("a", null, "See alerts");
       more.href = "alerts.html";
       line.append(more);
+
+      // Live Air Quality Index & Health Advisory
+      try {
+        const aqi = await getAqi(city);
+        if (aqi && aqi.category !== "Unavailable") {
+          live.append(renderAqiCard(aqi));
+        }
+      } catch (_) {}
     } catch (e) {
       live.replaceChildren(h("p", "note", e.message));
     }
@@ -800,6 +845,18 @@ async function initForecast() {
         cbox.replaceChildren(h("p", "note", "Comparing with a normal year…"));
         getClimate(city).then((c) => climateLine(cbox, c))
           .catch(() => cbox.replaceChildren(h("p", "note", "The comparison with a normal year is not available right now.")));
+      }
+
+      const aqiBox = $("#fc-aqi");
+      if (aqiBox) {
+        aqiBox.replaceChildren(h("p", "note", "Checking live Air Quality (AQI)…"));
+        getAqi(city).then((a) => {
+          if (a && a.category !== "Unavailable") {
+            aqiBox.replaceChildren(renderAqiCard(a));
+          } else {
+            aqiBox.replaceChildren(h("p", "note", "Air quality data is currently unavailable for this area."));
+          }
+        }).catch(() => aqiBox.replaceChildren(h("p", "note", "Could not load air quality data.")));
       }
 
       const body = $("#fc-table");
@@ -1142,6 +1199,9 @@ async function initAssistant() {
         if (g.today_rain_mm != null) {
           const ch = h("span", "why-chip"); ch.innerHTML = `Expected rain: <b>${num(g.today_rain_mm)} mm</b>`; chipWrap.append(ch);
         }
+        if (g.aqi && g.aqi.pm2_5 != null) {
+          const ch = h("span", "why-chip"); ch.innerHTML = `Air Quality: <b>${g.aqi.category} (PM2.5: ${Math.round(g.aqi.pm2_5)})</b>`; chipWrap.append(ch);
+        }
         secNumbers.append(chipWrap);
         body.append(secNumbers);
 
@@ -1149,6 +1209,9 @@ async function initAssistant() {
         const secAlerts = h("div", "why-section");
         secAlerts.append(h("div", "why-label", "Official Government Alerts Fed"));
         const alertList = h("ul", "why-list");
+        if (g.aqi && g.aqi.advisory) {
+          alertList.append(h("li", null, `[Air Quality Advisory] ${g.aqi.category}: ${g.aqi.advisory}`));
+        }
         if (g.alerts_checked && g.alerts_checked.items && g.alerts_checked.items.length) {
           g.alerts_checked.items.forEach((item) => {
             alertList.append(h("li", null, `[${item.mentions_city ? "Names city" : "State-level"}] ${item.title} (${item.issuer}, valid until ${item.valid_until})`));
