@@ -1,29 +1,23 @@
 {
-  "version": 2,
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/index.py"
     },
     {
-      "source": "/assets/(.*)",
-      "destination": "/backend/frontend/assets/$1"
-    },
+      "source": "/api",
+      "destination": "/api/index.py"
+    }
+  ],
+  "headers": [
     {
       "source": "/sw.js",
-      "destination": "/backend/frontend/sw.js"
-    },
-    {
-      "source": "/manifest.json",
-      "destination": "/backend/frontend/manifest.json"
-    },
-    {
-      "source": "/",
-      "destination": "/backend/frontend/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/backend/frontend/$1"
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     }
   ]
 }

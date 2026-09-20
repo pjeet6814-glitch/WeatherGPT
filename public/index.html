@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WeatherGPT: weather and official warnings in your language</title>
+<meta name="description" content="Get your town's forecast and official government weather alerts, explained in English, Hindi, Gujarati, Marathi, Bengali or Tamil.">
+<script>try{var t=localStorage.getItem("wgpt_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C3440'/%3E%3Cpath d='M7 10h18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 16v9M16 16v11M21 16v6' stroke='%238FD3F0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<meta name="theme-color" content="#0C3440">
+<link rel="manifest" href="manifest.json">
+<script src="assets/config.js"></script>
+<script src="assets/i18n.js"></script>
+<script src="assets/app.js" defer></script>
+</head>
+<body data-page="home">
+<a class="skip" href="#main">Skip to content</a>
+<header class="site">
+  <div class="offline-banner" id="offline-banner" hidden>
+    <div class="wrap" data-i18n="offline_msg">⚠️ You are offline. Showing last cached weather forecast &amp; emergency guidance.</div>
+  </div>
+  <div class="bar wrap">
+    <a class="brand" href="index.html" aria-label="WeatherGPT home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="cl" d="M5 9h22"/><path class="st" d="M10 15v10M16 15v13M22 15v7"/></svg>
+      <span>WeatherGPT</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Main">
+        <a href="index.html" aria-current="page" data-i18n="nav_home">Home</a>
+        <a href="assistant.html" data-i18n="nav_ask">Ask</a>
+        <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
+        <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="climate.html" data-i18n="nav_climate">Climate</a>
+        <a href="safety.html" data-i18n="nav_safety">Safety</a>
+        <a href="about.html" data-i18n="nav_about">About</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language selection">
+      <button type="button" class="lang-btn active" data-lang="en" onclick="setUILang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang="hi" onclick="setUILang('hi')">हिं</button>
+      <button type="button" class="lang-btn" data-lang="gu" onclick="setUILang('gu')">ગુજ</button>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Switch to dark mode" data-i18n-aria="theme_btn"></button>
+    <a class="btn small" href="assistant.html" data-i18n="btn_ask_nav">Ask a question</a>
+    <button class="menu" type="button" aria-expanded="false" aria-controls="nav" data-i18n="menu_btn">Menu</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="badge" data-i18n="hero_badge">Smart India Hackathon 2026 prototype, SIH26068. Live data from Open-Meteo and NDMA SACHET.</p>
+        <h1 data-i18n="hero_title">Rain, heat and official warnings, in your own language.</h1>
+        <p class="lede" data-i18n="hero_lede">Get today's forecast and any government alert for your town, explained in English, Hindi, Gujarati, Marathi, Bengali or Tamil. Official alerts always appear exactly as they were issued.</p>
+        <form class="place-form" id="home-form">
+          <div class="field">
+            <label for="city" data-i18n="city_label">Your town or city</label>
+            <div class="inline">
+              <input id="city" type="text" autocomplete="off" placeholder="For example, Vadodara" data-i18n-placeholder="city_placeholder">
+              <button class="btn ghost" type="submit" data-i18n="btn_update">Update</button>
+            </div>
+          </div>
+        </form>
+        <div class="quick" id="quick" role="group" aria-label="Quick pick a town"></div>
+        <p class="quick-note" id="quick-note" aria-live="polite"></p>
+        <p class="quick-note" data-i18n="locate_note">"Use my location" looks up your town's name once. Only the name is saved on this device.</p>
+        <p class="cta-row">
+          <a class="btn" href="assistant.html" data-i18n="cta_ask">Ask a question</a>
+          <a class="btn ghost" href="forecast.html" data-i18n="cta_forecast">Open the 5-day forecast</a>
+        </p>
+      </div>
+      <div class="live" id="live" aria-live="polite"><p class="note">Loading the forecast…</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 data-i18n="section_head">Everything you need before the weather turns</h2>
+      </div>
+      <div class="cards">
+        <a class="card" href="assistant.html">
+          <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+          <h3 data-i18n="card_ask_h">Ask in your language</h3>
+          <p data-i18n="card_ask_p">Type or speak a question about rain, heat or travel. The answer is written from the live forecast and current alerts, in a few plain sentences.</p>
+          <span class="go" data-i18n="card_ask_go">Ask a question</span>
+        </a>
+        <a class="card" href="forecast.html">
+          <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 13v8M8 13v8M12 15v8M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg></span>
+          <h3 data-i18n="card_fc_h">Read the next 5 days</h3>
+          <p data-i18n="card_fc_p">See the chance of rain and the expected millimetres for each day, so you know how much rain is coming and not only whether.</p>
+          <span class="go" data-i18n="card_fc_go">Open the forecast</span>
+        </a>
+        <a class="card" href="alerts.html">
+          <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg></span>
+          <h3 data-i18n="card_al_h">Check official alerts</h3>
+          <p data-i18n="card_al_p">Warnings from IMD and state authorities, shown exactly as published, with the time each one stops being valid.</p>
+          <span class="go" data-i18n="card_al_go">See current alerts</span>
+        </a>
+        <a class="card" href="climate.html">
+          <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span>
+          <h3 data-i18n="card_cl_h">Compare with a normal year</h3>
+          <p data-i18n="card_cl_p">See whether the coming days are wetter, drier or hotter than the same dates over the last 10 years, and how rain builds through the year.</p>
+          <span class="go" data-i18n="card_cl_go">Open the climate page</span>
+        </a>
+        <a class="card" href="safety.html">
+          <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <h3 data-i18n="card_sf_h">Prepare before it happens</h3>
+          <p data-i18n="card_sf_p">Plain steps for heavy rain, lightning, heat and cyclones, plus a packing checklist you can tick off.</p>
+          <span class="go" data-i18n="card_sf_go">Read the safety guide</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>How it stays honest</h2>
+        <p class="lede">Weather advice can hurt people when it sounds surer than it is. These rules are built into every answer.</p>
+      </div>
+      <div class="split">
+        <div class="yes-panel">
+          <h3>The assistant always</h3>
+          <ul class="ticks yes">
+            <li>Shows official alerts in their own block, word for word.</li>
+            <li>Uses only numbers that appear in the live forecast.</li>
+            <li>Says when an alert stops being valid.</li>
+            <li>Tells you when data is missing or out of date.</li>
+          </ul>
+        </div>
+        <div class="no-panel">
+          <h3>The assistant never</h3>
+          <ul class="ticks no">
+            <li>Says something is "safe" or carries "no risk".</li>
+            <li>Guesses at flood risk or rainfall it has no data for.</li>
+            <li>Hides a day with heavy rain expected.</li>
+            <li>Treats "no alerts" as "no danger".</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head"><h2>Try a question</h2></div>
+      <ul class="try-list">
+        <li><a href="assistant.html?q=Will%20it%20rain%20today%3F">Will it rain today?</a></li>
+        <li><a href="assistant.html?q=Are%20there%20any%20official%20weather%20warnings%20for%20my%20area%3F">Are there any official warnings for my area?</a></li>
+        <li><a href="assistant.html?q=Should%20I%20carry%20an%20umbrella%20tomorrow%3F">Should I carry an umbrella tomorrow?</a></li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <h2>WeatherGPT</h2>
+      <p data-i18n="foot_desc">Forecasts and official warnings, explained in your language. A prototype built for Smart India Hackathon 2026, problem statement SIH26068.</p>
+    </div>
+    <div>
+      <h2 data-i18n="foot_sources">Data sources</h2>
+      <ul>
+        <li>Forecasts and climate averages: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
+        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a>, which carries IMD and state warnings</li>
+      </ul>
+    </div>
+    <div>
+      <h2 data-i18n="foot_emergency">In an emergency</h2>
+      <p data-i18n="foot_emergency_p">Call 112 and follow instructions from your local authorities. WeatherGPT can be wrong and is not an emergency service.</p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

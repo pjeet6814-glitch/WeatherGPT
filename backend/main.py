@@ -508,6 +508,7 @@ def check_rate_limit(ip: str) -> None:
 
 # -------------------------------------------------------------- endpoints
 @app.get("/api/health")
+@app.get("/health", include_in_schema=False)
 async def health():
     """Open this after deploying: it shows whether the Gemini key reached the server (never the key itself)."""
     return {"ok": True, "gemini_key_set": bool(GEMINI_API_KEY), "model": GEMINI_MODEL}
@@ -528,6 +529,7 @@ async def alerts(state: str = Query("Gujarat", max_length=60), city: str = Query
 
 
 @app.get("/api/climate")
+@app.get("/climate", include_in_schema=False)
 async def climate(city: str = Query("Vadodara", max_length=80)):
     """The next 5 days compared with the same dates over the last 10 years, plus rainfall through the year."""
     w = await get_weather(city)
@@ -535,6 +537,13 @@ async def climate(city: str = Query("Vadodara", max_length=80)):
     if not c:
         raise HTTPException(503, "Climate history is unavailable right now. Try again in a moment.")
     return climate_payload(w, c)
+
+
+@app.get("/api", include_in_schema=False)
+@app.get("/api/", include_in_schema=False)
+@app.get("/api/index.py", include_in_schema=False)
+async def api_root():
+    return {"ok": True, "message": "WeatherGPT API is operational", "docs": "/api/docs"}
 
 
 @app.post("/api/chat")
@@ -602,8 +611,12 @@ async def chat(req: ChatRequest, request: Request):
 
 
 # Serve the website too. Must stay LAST so the /api routes above are matched first.
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
+_this_dir = os.path.dirname(os.path.abspath(__file__))
+_root_dir = os.path.dirname(_this_dir)
+FRONTEND_DIR = os.path.join(_root_dir, "public")
 if not os.path.isdir(FRONTEND_DIR):
-    FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "public")
+    FRONTEND_DIR = os.path.join(_this_dir, "frontend")
+if not os.path.isdir(FRONTEND_DIR):
+    FRONTEND_DIR = os.path.join(_this_dir, "public")
 if os.path.isdir(FRONTEND_DIR):
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="site")
