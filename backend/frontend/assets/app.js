@@ -988,12 +988,42 @@ async function initAssistant() {
     if (!("speechSynthesis" in window)) return;
     const wasSpeaking = btn.dataset.speaking === "1";
     speechSynthesis.cancel();
-    document.querySelectorAll("[data-speaking]").forEach((b) => { b.textContent = "Listen"; b.removeAttribute("data-speaking"); });
+    document.querySelectorAll("[data-speaking]").forEach((b) => {
+      b.textContent = "🔊 Listen";
+      b.removeAttribute("data-speaking");
+      b.classList.remove("speaking");
+    });
     if (wasSpeaking) return;
-    const u = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, "").replace(/\*\*/g, ""));
+
+    // Clean rich markdown symbols, links, and emojis for natural pronunciation
+    const cleanText = text
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[*_#`~]/g, "")
+      .replace(/[•–—]/g, " ")
+      .replace(/[\u{1F300}-\u{1F9FF}]/gu, "")
+      .trim();
+
+    const u = new SpeechSynthesisUtterance(cleanText);
     u.lang = code;
-    u.onend = u.onerror = () => { btn.textContent = "Listen"; btn.removeAttribute("data-speaking"); };
-    btn.textContent = "Stop"; btn.dataset.speaking = "1";
+    u.rate = 0.95; // Slightly measured rate for clearer regional articulation
+
+    // Select the best matching regional voice available on this device
+    const voices = speechSynthesis.getVoices();
+    const prefix = (code || "en").split("-")[0];
+    const matchVoice = voices.find((v) => v.lang === code) ||
+      voices.find((v) => v.lang && v.lang.startsWith(prefix)) ||
+      voices.find((v) => v.lang && v.lang.includes("IN"));
+    if (matchVoice) u.voice = matchVoice;
+
+    u.onend = u.onerror = () => {
+      btn.textContent = "🔊 Listen";
+      btn.removeAttribute("data-speaking");
+      btn.classList.remove("speaking");
+    };
+
+    btn.textContent = "⏹️ Stop";
+    btn.dataset.speaking = "1";
+    btn.classList.add("speaking");
     speechSynthesis.speak(u);
   }
   async function copyText(text, btn) {
@@ -1061,7 +1091,7 @@ async function initAssistant() {
       wrap.append(h("p", "meta", `Weather from ${d.source}, ${d.fetched_at}, for ${d.place}.`));
       const acts = h("div", "actions");
       if ("speechSynthesis" in window) {
-        const b = h("button", "linkbtn", "Listen"); b.type = "button";
+        const b = h("button", "linkbtn", "🔊 Listen"); b.type = "button";
         b.addEventListener("click", () => speak(d.answer, code, b));
         acts.append(b);
       }
@@ -1172,19 +1202,46 @@ async function initAssistant() {
   if (SR) {
     micEl.hidden = false;
     let rec = null;
+    micEl.title = "Speak your question (Voice Input)";
     micEl.addEventListener("click", () => {
-      if (rec) { rec.stop(); return; }
-      rec = new SR();
-      rec.lang = langCode(getLang());
-      rec.interimResults = false;
+      if (rec) {
+        rec.stop();
+        return;
+      }
+      try {
+        rec = new SR();
+      } catch (err) {
+        console.warn("SpeechRecognition init failed", err);
+        return;
+      }
+      const activeLang = langCode(getLang());
+      rec.lang = activeLang;
+      rec.interimResults = true;
+      rec.maxAlternatives = 1;
+
       rec.onstart = () => {
-        micEl.setAttribute("aria-pressed", "true"); micEl.setAttribute("aria-label", "Stop listening");
-        if (micStatus) micStatus.textContent = "Listening. Speak your question.";
+        micEl.setAttribute("aria-pressed", "true");
+        micEl.classList.add("recording");
+        micEl.setAttribute("aria-label", "Stop listening");
+        msgEl.placeholder = "Listening... Speak now in your language";
+        if (micStatus) micStatus.textContent = "Listening. Speak now...";
       };
-      rec.onresult = (ev) => { msgEl.value = ev.results[0][0].transcript; msgEl.dispatchEvent(new Event("input")); msgEl.focus(); };
+      rec.onresult = (ev) => {
+        let transcript = "";
+        for (let i = 0; i < ev.results.length; i++) {
+          transcript += ev.results[i][0].transcript;
+        }
+        msgEl.value = transcript;
+        msgEl.dispatchEvent(new Event("input"));
+      };
       rec.onend = rec.onerror = () => {
-        rec = null; micEl.setAttribute("aria-pressed", "false"); micEl.setAttribute("aria-label", "Speak your question");
+        rec = null;
+        micEl.setAttribute("aria-pressed", "false");
+        micEl.classList.remove("recording");
+        micEl.setAttribute("aria-label", "Speak your question");
+        msgEl.placeholder = "Ask about the weather or warnings";
         if (micStatus) micStatus.textContent = "";
+        msgEl.focus();
       };
       rec.start();
     });
