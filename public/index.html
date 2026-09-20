@@ -50,9 +50,15 @@
 </header>
 
 <main id="main">
-  <section class="hero">
+  <section class="hero" id="hero-section">
+    <canvas id="weather-bg-canvas" class="hero-bg-canvas" aria-hidden="true"></canvas>
+    <div class="hero-lightning-overlay" id="hero-lightning" aria-hidden="true"></div>
     <div class="wrap hero-grid">
       <div class="hero-copy">
+        <div class="hero-weather-tag" id="hero-weather-tag" hidden>
+          <span class="tag-pulse"></span>
+          <span id="hero-weather-label">Live Atmosphere</span>
+        </div>
         <p class="badge" data-i18n="hero_badge">Smart India Hackathon 2026 prototype, SIH26068. Live data from Open-Meteo and NDMA SACHET.</p>
         <h1 data-i18n="hero_title">Rain, heat and official warnings, in your own language.</h1>
         <p class="lede" data-i18n="hero_lede">Get today's forecast and any government alert for your town, explained in English, Hindi, Gujarati, Marathi, Bengali or Tamil. Official alerts always appear exactly as they were issued.</p>

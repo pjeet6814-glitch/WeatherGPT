@@ -708,10 +708,501 @@ function buildHourlyView(hourly, opts) {
   return container;
 }
 
+/* ---------------------------------------------------------------- live weather atmosphere */
+function resolveWeatherAtmosphere(c, d, alertData) {
+  if (!c) return "clear-day";
+  const code = typeof c.weather_code === "number" ? c.weather_code : null;
+  const isDay = c.is_day !== 0;
+  const temp = c.temperature_2m || 0;
+  const rainProb = (d && d.precipitation_probability_max && d.precipitation_probability_max[0]) || 0;
+  const rainMm = (d && d.precipitation_sum && d.precipitation_sum[0]) || c.precipitation || 0;
+
+  let hasStormAlert = false;
+  let hasHeatAlert = false;
+  if (alertData && Array.isArray(alertData.alerts)) {
+    for (const alt of alertData.alerts) {
+      const text = `${alt.headline || ""} ${alt.description || ""} ${alt.event || ""}`.toLowerCase();
+      if (/thunderstorm|lightning|squall|cyclone|tornado|gusty/.test(text)) {
+        hasStormAlert = true;
+      }
+      if (/heat wave|heatwave|warm night|high temperature/.test(text)) {
+        hasHeatAlert = true;
+      }
+    }
+  }
+
+  // 1. Severe storm / Thunderstorm
+  if ((code !== null && code >= 95) || hasStormAlert) {
+    return "thunderstorm";
+  }
+
+  // 2. Extreme heatwave
+  if (temp >= 38 || hasHeatAlert) {
+    return isDay ? "heatwave" : "clear-night";
+  }
+
+  // 3. Rain / heavy rain
+  if ((code !== null && [61, 63, 65, 66, 67, 81, 82].includes(code)) || rainMm >= 3.0 || rainProb >= 65) {
+    return "rain";
+  }
+
+  // 4. Drizzle / light showers
+  if ((code !== null && [51, 53, 55, 56, 57, 80].includes(code)) || rainMm >= 0.6 || rainProb >= 40) {
+    return "drizzle";
+  }
+
+  // 5. Fog
+  if (code === 45 || code === 48) {
+    return "fog";
+  }
+
+  // 6. Overcast
+  if (code === 3) {
+    return "overcast";
+  }
+
+  // 7. Partly cloudy
+  if (code === 2) {
+    return isDay ? "partly-cloudy-day" : "partly-cloudy-night";
+  }
+
+  // 8. Clear / default
+  return isDay ? "clear-day" : "clear-night";
+}
+
+function setupLiveWeatherAtmosphere() {
+  const hero = document.getElementById("hero-section") || document.querySelector(".hero");
+  const canvas = document.getElementById("weather-bg-canvas");
+  const lightning = document.getElementById("hero-lightning");
+  const tag = document.getElementById("hero-weather-tag");
+  const tagLabel = document.getElementById("hero-weather-label");
+
+  if (!hero || !canvas) {
+    return { update: () => {} };
+  }
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return { update: () => {} };
+  }
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let currentAtmosphere = "clear-day";
+  let particles = [];
+  let clouds = [];
+  let shootingStars = [];
+  let nextShootingStarTime = 0;
+  let lightningTimer = null;
+  let animFrameId = null;
+  let isRunning = false;
+  let isHeroVisible = true;
+
+  function resize() {
+    const rect = hero.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = rect.width;
+    height = rect.height;
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    initParticles(currentAtmosphere);
+  }
+
+  function initParticles(type) {
+    particles = [];
+    clouds = [];
+    shootingStars = [];
+    if (width <= 0 || height <= 0) return;
+
+    if (type === "rain" || type === "thunderstorm") {
+      const isThunder = type === "thunderstorm";
+      const count = isThunder ? Math.min(130, Math.max(45, Math.floor(width / 7))) : Math.min(90, Math.max(35, Math.floor(width / 10)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * (width + 100) - 50,
+          y: Math.random() * height,
+          speed: isThunder ? 18 + Math.random() * 12 : 14 + Math.random() * 8,
+          len: isThunder ? 24 + Math.random() * 20 : 16 + Math.random() * 16,
+          thickness: isThunder ? 1.4 + Math.random() * 0.8 : 1.1 + Math.random() * 0.6,
+          alpha: 0.25 + Math.random() * 0.45,
+          drift: isThunder ? -3.5 - Math.random() * 2.5 : -1.8 - Math.random() * 1.5,
+        });
+      }
+    } else if (type === "drizzle") {
+      const count = Math.min(65, Math.max(25, Math.floor(width / 14)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * (width + 60) - 30,
+          y: Math.random() * height,
+          speed: 6 + Math.random() * 5,
+          len: 8 + Math.random() * 8,
+          thickness: 1,
+          alpha: 0.18 + Math.random() * 0.3,
+          drift: -0.8 - Math.random() * 0.8,
+        });
+      }
+    } else if (type === "clear-night" || type === "partly-cloudy-night") {
+      const count = type === "clear-night" ? Math.min(80, Math.max(30, Math.floor(width / 12))) : Math.min(45, Math.max(20, Math.floor(width / 18)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * (height * 0.9),
+          r: 0.8 + Math.random() * 1.6,
+          baseAlpha: 0.2 + Math.random() * 0.6,
+          twinkleSpeed: 1.5 + Math.random() * 3,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+      nextShootingStarTime = performance.now() + 3000 + Math.random() * 4000;
+    } else if (type === "clear-day") {
+      const count = Math.min(32, Math.max(15, Math.floor(width / 26)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: 1.5 + Math.random() * 2.5,
+          alpha: 0.12 + Math.random() * 0.25,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: -0.2 - Math.random() * 0.4,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    } else if (type === "heatwave") {
+      const count = Math.min(45, Math.max(20, Math.floor(width / 18)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: 1.5 + Math.random() * 3,
+          alpha: 0.15 + Math.random() * 0.35,
+          speed: 0.6 + Math.random() * 1.2,
+          driftOffset: Math.random() * 100,
+          hue: Math.random() > 0.4 ? "251, 146, 60" : "248, 113, 113",
+        });
+      }
+    } else if (type === "fog") {
+      const count = Math.min(16, Math.max(7, Math.floor(width / 60)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: height * 0.2 + Math.random() * (height * 0.7),
+          rx: 70 + Math.random() * 110,
+          ry: 25 + Math.random() * 40,
+          alpha: 0.07 + Math.random() * 0.12,
+          speed: 0.15 + Math.random() * 0.25,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    }
+
+    if (type === "partly-cloudy-day" || type === "partly-cloudy-night" || type === "overcast") {
+      const isOvercast = type === "overcast";
+      const cloudCount = isOvercast ? 6 : 4;
+      for (let i = 0; i < cloudCount; i++) {
+        clouds.push({
+          x: (i / cloudCount) * width + (Math.random() * 60 - 30),
+          y: 20 + Math.random() * (height * 0.45),
+          rx: (isOvercast ? 140 : 100) + Math.random() * 90,
+          ry: (isOvercast ? 45 : 35) + Math.random() * 30,
+          speed: 0.08 + Math.random() * 0.14,
+          alpha: isOvercast ? 0.22 + Math.random() * 0.16 : 0.14 + Math.random() * 0.12,
+        });
+      }
+    }
+  }
+
+  function scheduleLightning() {
+    if (lightningTimer) clearTimeout(lightningTimer);
+    if (currentAtmosphere !== "thunderstorm" || !lightning) return;
+    const delay = 4500 + Math.random() * 6500;
+    lightningTimer = setTimeout(() => {
+      triggerLightning();
+      scheduleLightning();
+    }, delay);
+  }
+
+  function triggerLightning() {
+    if (!lightning || document.hidden || !isHeroVisible) return;
+    lightning.classList.add("flash");
+    setTimeout(() => {
+      lightning.classList.remove("flash");
+      setTimeout(() => {
+        lightning.classList.add("flash");
+        setTimeout(() => lightning.classList.remove("flash"), 90);
+      }, 60);
+    }, 70);
+  }
+
+  function drawScene(now) {
+    const t = now * 0.001;
+    const type = currentAtmosphere;
+
+    if (type === "clear-day") {
+      const sunX = width * 0.82;
+      const sunY = height * 0.18;
+      const rad = Math.max(width, height) * 0.6;
+      const glow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, rad);
+      glow.addColorStop(0, "rgba(254, 240, 138, 0.18)");
+      glow.addColorStop(0.35, "rgba(253, 224, 71, 0.07)");
+      glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    if (type === "clear-night" || type === "partly-cloudy-night") {
+      ctx.fillStyle = "#ffffff";
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const alpha = Math.max(0.08, Math.min(1, p.baseAlpha + Math.sin(t * p.twinkleSpeed + p.phase) * 0.35));
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      if (now > nextShootingStarTime && shootingStars.length === 0) {
+        shootingStars.push({
+          x: Math.random() * (width * 0.7),
+          y: Math.random() * (height * 0.35),
+          vx: 5 + Math.random() * 4,
+          vy: 2.5 + Math.random() * 2,
+          len: 80 + Math.random() * 60,
+          life: 0,
+          maxLife: 35 + Math.random() * 20,
+        });
+        nextShootingStarTime = now + 8000 + Math.random() * 10000;
+      }
+
+      for (let i = shootingStars.length - 1; i >= 0; i--) {
+        const s = shootingStars[i];
+        s.life++;
+        s.x += s.vx;
+        s.y += s.vy;
+        const prog = s.life / s.maxLife;
+        const alpha = prog < 0.2 ? prog / 0.2 : (1 - prog);
+        if (alpha > 0) {
+          const grad = ctx.createLinearGradient(s.x, s.y, s.x - s.vx * (s.len / 8), s.y - s.vy * (s.len / 8));
+          grad.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
+          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x - s.vx * (s.len / 8), s.y - s.vy * (s.len / 8));
+          ctx.stroke();
+        }
+        if (s.life >= s.maxLife || s.x > width + 100 || s.y > height + 100) {
+          shootingStars.splice(i, 1);
+        }
+      }
+    }
+
+    if (clouds.length > 0) {
+      for (let i = 0; i < clouds.length; i++) {
+        const c = clouds[i];
+        c.x += c.speed;
+        if (c.x - c.rx > width) {
+          c.x = -c.rx;
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.rx, c.ry, 0, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.rx);
+        const isOvercast = type === "overcast";
+        const cloudColor = isOvercast ? "200, 215, 230" : "255, 255, 255";
+        grad.addColorStop(0, `rgba(${cloudColor}, ${c.alpha})`);
+        grad.addColorStop(0.7, `rgba(${cloudColor}, ${c.alpha * 0.65})`);
+        grad.addColorStop(1, `rgba(${cloudColor}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    if (type === "rain" || type === "thunderstorm" || type === "drizzle") {
+      ctx.strokeStyle = type === "thunderstorm" ? "rgba(200, 225, 255, 0.75)" : "rgba(186, 218, 250, 0.65)";
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y += p.speed;
+        p.x += p.drift;
+        if (p.y > height) {
+          p.y = -p.len;
+          p.x = Math.random() * (width + 100) - 50;
+        }
+        ctx.globalAlpha = p.alpha;
+        ctx.lineWidth = p.thickness;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + p.drift * 1.8, p.y + p.len);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    if (type === "clear-day") {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y += p.vy;
+        p.x += p.vx + Math.sin(t + p.phase) * 0.25;
+        if (p.y < -10) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = "rgba(255, 255, 240, 0.9)";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    if (type === "heatwave") {
+      const glow = ctx.createLinearGradient(0, height, 0, height * 0.5);
+      glow.addColorStop(0, "rgba(234, 88, 12, 0.15)");
+      glow.addColorStop(1, "rgba(234, 88, 12, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y -= p.speed;
+        p.x += Math.sin((p.y + p.driftOffset) * 0.03 + t * 2) * 0.7;
+        if (p.y < -10) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        const fade = Math.sin((p.y / height) * Math.PI);
+        ctx.globalAlpha = Math.max(0.05, p.alpha * fade);
+        ctx.fillStyle = `rgba(${p.hue}, 0.9)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    if (type === "fog") {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.speed;
+        if (p.x - p.rx > width) {
+          p.x = -p.rx;
+        }
+        const breathe = 0.85 + Math.sin(t * 0.8 + p.phase) * 0.15;
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, p.rx * breathe, p.ry * breathe, 0, 0, Math.PI * 2);
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.rx * breathe);
+        grad.addColorStop(0, `rgba(220, 230, 242, ${p.alpha})`);
+        grad.addColorStop(0.7, `rgba(220, 230, 242, ${p.alpha * 0.5})`);
+        grad.addColorStop(1, "rgba(220, 230, 242, 0)");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
+  function animate(now) {
+    if (!isRunning) return;
+    ctx.clearRect(0, 0, width, height);
+    drawScene(now);
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  function start() {
+    if (isRunning) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    isRunning = true;
+    animFrameId = requestAnimationFrame(animate);
+    if (currentAtmosphere === "thunderstorm") scheduleLightning();
+  }
+
+  function stop() {
+    isRunning = false;
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+    if (lightningTimer) {
+      clearTimeout(lightningTimer);
+      lightningTimer = null;
+    }
+    if (lightning) lightning.classList.remove("flash");
+  }
+
+  window.addEventListener("resize", resize);
+
+  if (typeof IntersectionObserver !== "undefined") {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        isHeroVisible = entry.isIntersecting;
+        if (isHeroVisible && !document.hidden) {
+          start();
+        } else {
+          stop();
+        }
+      });
+    }, { threshold: 0.05 });
+    observer.observe(hero);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stop();
+    } else if (isHeroVisible) {
+      start();
+    }
+  });
+
+  resize();
+  start();
+
+  function formatAtmosphereName(key) {
+    if (!key) return "Live Atmosphere";
+    return key.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  }
+
+  return {
+    update(newAtmosphere, label, place) {
+      const validAtmosphere = newAtmosphere || "clear-day";
+      hero.setAttribute("data-weather", validAtmosphere);
+
+      if (tag && tagLabel) {
+        tag.hidden = false;
+        const cityName = place ? place.split(",")[0] : "";
+        const desc = label || formatAtmosphereName(validAtmosphere);
+        tagLabel.textContent = cityName ? `${cityName} • ${desc}` : desc;
+      }
+
+      if (validAtmosphere !== currentAtmosphere) {
+        currentAtmosphere = validAtmosphere;
+        initParticles(currentAtmosphere);
+        if (currentAtmosphere === "thunderstorm") {
+          scheduleLightning();
+        } else if (lightningTimer) {
+          clearTimeout(lightningTimer);
+          lightningTimer = null;
+          if (lightning) lightning.classList.remove("flash");
+        }
+      }
+
+      if (!isRunning && isHeroVisible && !document.hidden) {
+        start();
+      }
+    }
+  };
+}
+
 /* ---------------------------------------------------------------- home */
 async function initHome() {
   const input = $("#city"), form = $("#home-form"), live = $("#live"), quick = $("#quick"), qnote = $("#quick-note");
   input.value = myCity();
+  const atmosphere = setupLiveWeatherAtmosphere();
 
   async function refresh() {
     const city = input.value.trim() || "Vadodara";
@@ -724,6 +1215,8 @@ async function initHome() {
       live.append(h("p", "place", w.place));
 
       const cond = conditionOf(c, d);
+      const baseAtmosphere = resolveWeatherAtmosphere(c, d, null);
+      atmosphere.update(baseAtmosphere, cond ? cond.label : null, w.place || city);
       const row = h("div", "cond-row");
       if (cond) row.innerHTML = iconSvg(cond.icon, "cond-icon");
       row.append(h("span", "temp", `${Math.round(c.temperature_2m)}°C`));
@@ -791,6 +1284,12 @@ async function initHome() {
       const more = h("a", null, "See alerts");
       more.href = "alerts.html";
       line.append(more);
+
+      // Upgrade atmosphere if official alerts indicate severe storm/lightning/heatwave
+      const alertAtmosphere = resolveWeatherAtmosphere(c, d, a);
+      if (alertAtmosphere !== baseAtmosphere) {
+        atmosphere.update(alertAtmosphere, cond ? cond.label : null, w.place || city);
+      }
 
       // Live Air Quality Index & Health Advisory
       try {
@@ -2153,7 +2652,7 @@ function boot() {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { dayClass, todayLine, alertSummary, rainLines, tempChart, renderRich, friendly, num, wmo, conditionOf, rangeBar, seasonChart, tempPhrase };
+  module.exports = { dayClass, todayLine, alertSummary, rainLines, tempChart, renderRich, friendly, num, wmo, conditionOf, rangeBar, seasonChart, tempPhrase, resolveWeatherAtmosphere };
 } else {
   document.addEventListener("DOMContentLoaded", boot);
 }
