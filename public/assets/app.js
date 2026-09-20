@@ -1198,6 +1198,500 @@ function setupLiveWeatherAtmosphere() {
   };
 }
 
+/* ---------------------------------------------------------------- secondary page atmosphere */
+function setupPageAtmosphere(pageType) {
+  const banner = document.getElementById("page-banner") || document.querySelector(".page-hero-banner");
+  const canvas = document.getElementById("page-bg-canvas") || (banner && banner.querySelector(".page-bg-canvas"));
+  if (!banner || !canvas) {
+    return { updateWeather: () => {}, setTone: () => {}, pulse: () => {} };
+  }
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return { updateWeather: () => {}, setTone: () => {}, pulse: () => {} };
+  }
+
+  let width = 0, height = 0, dpr = 1;
+  let particles = [];
+  let animFrameId = null;
+  let isRunning = false;
+  let isVisible = true;
+  let pulseEnergy = 1.0;
+
+  let forecastMode = "sun";
+  let alertTone = "green";
+  let radarAngle = 0;
+  let scanX = 0;
+
+  function resize() {
+    const rect = banner.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    width = rect.width;
+    height = rect.height;
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    initParticles();
+  }
+
+  function initParticles() {
+    particles = [];
+    if (width <= 0 || height <= 0) return;
+
+    if (pageType === "forecast") {
+      if (forecastMode === "rain") {
+        const count = Math.min(50, Math.max(20, Math.floor(width / 18)));
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * (width + 50) - 25,
+            y: Math.random() * height,
+            speed: 10 + Math.random() * 8,
+            len: 12 + Math.random() * 12,
+            alpha: 0.2 + Math.random() * 0.4,
+          });
+        }
+      } else {
+        const count = Math.min(25, Math.max(12, Math.floor(width / 35)));
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            r: 1.5 + Math.random() * 2.5,
+            alpha: 0.15 + Math.random() * 0.35,
+            vy: -0.2 - Math.random() * 0.35,
+            phase: Math.random() * Math.PI * 2,
+          });
+        }
+      }
+    } else if (pageType === "alerts") {
+      const blipCount = 6;
+      for (let i = 0; i < blipCount; i++) {
+        particles.push({
+          angle: Math.random() * Math.PI * 2,
+          dist: 30 + Math.random() * 110,
+          size: 2.5 + Math.random() * 2,
+          alpha: 0.2 + Math.random() * 0.7,
+          blinkSpeed: 1 + Math.random() * 2,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }
+    } else if (pageType === "climate") {
+      const count = Math.min(28, Math.max(14, Math.floor(width / 30)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: 1.5 + Math.random() * 3,
+          alpha: 0.15 + Math.random() * 0.35,
+          speed: 0.4 + Math.random() * 0.8,
+          phase: Math.random() * Math.PI * 2,
+          hue: Math.random() > 0.5 ? "245, 158, 11" : "20, 184, 166",
+        });
+      }
+    } else if (pageType === "safety") {
+      const count = Math.min(26, Math.max(12, Math.floor(width / 32)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          r: 2 + Math.random() * 3.5,
+          alpha: 0.18 + Math.random() * 0.35,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          phase: Math.random() * Math.PI * 2,
+          type: Math.random() > 0.5 ? "shield" : "vital",
+        });
+      }
+    } else if (pageType === "assistant") {
+      const count = Math.min(35, Math.max(18, Math.floor(width / 22)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.7,
+          vy: (Math.random() - 0.5) * 0.7,
+          r: 1.5 + Math.random() * 2.2,
+          alpha: 0.3 + Math.random() * 0.4,
+        });
+      }
+    } else if (pageType === "map") {
+      particles = [
+        { r: 20, maxR: 140, alpha: 0.6, speed: 0.5 },
+        { r: 70, maxR: 140, alpha: 0.4, speed: 0.5 },
+        { r: 110, maxR: 140, alpha: 0.2, speed: 0.5 }
+      ];
+    } else if (pageType === "about") {
+      const count = Math.min(32, Math.max(16, Math.floor(width / 26)));
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          speed: 0.8 + Math.random() * 1.6,
+          len: 12 + Math.random() * 24,
+          alpha: 0.15 + Math.random() * 0.4,
+          char: Math.random() > 0.6 ? (Math.random() > 0.5 ? "1" : "0") : "•",
+        });
+      }
+    }
+  }
+
+  function drawScene(now) {
+    const t = now * 0.001;
+
+    if (pulseEnergy > 1.0) {
+      pulseEnergy = Math.max(1.0, pulseEnergy - 0.02);
+    }
+
+    if (pageType === "forecast") {
+      if (forecastMode === "rain") {
+        ctx.strokeStyle = "rgba(186, 218, 250, 0.6)";
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.y += p.speed;
+          p.x -= p.speed * 0.15;
+          if (p.y > height) {
+            p.y = -p.len;
+            p.x = Math.random() * (width + 50) - 25;
+          }
+          ctx.globalAlpha = p.alpha;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x - 4, p.y + p.len);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        const sunX = width * 0.85;
+        const sunY = height * 0.25;
+        const glow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, Math.max(width, height) * 0.55);
+        glow.addColorStop(0, "rgba(254, 240, 138, 0.18)");
+        glow.addColorStop(0.4, "rgba(253, 224, 71, 0.06)");
+        glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, width, height);
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.y += p.vy;
+          p.x += Math.sin(t + p.phase) * 0.3;
+          if (p.y < -10) {
+            p.y = height + 10;
+            p.x = Math.random() * width;
+          }
+          ctx.globalAlpha = p.alpha;
+          ctx.fillStyle = "rgba(255, 255, 240, 0.85)";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (pageType === "alerts") {
+      const isRed = alertTone === "alert";
+      const isYellow = alertTone === "warn";
+      const radarColor = isRed ? "244, 63, 94" : (isYellow ? "245, 158, 11" : "52, 211, 153");
+      const rcx = width > 600 ? width * 0.82 : width * 0.5;
+      const rcy = height * 0.5;
+      const maxRadius = Math.min(width * 0.4, Math.max(90, height * 0.7));
+
+      radarAngle += isRed ? 0.035 : 0.022;
+
+      ctx.lineWidth = 1;
+      for (let r of [maxRadius * 0.3, maxRadius * 0.65, maxRadius]) {
+        ctx.strokeStyle = `rgba(${radarColor}, 0.22)`;
+        ctx.beginPath();
+        ctx.arc(rcx, rcy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = `rgba(${radarColor}, 0.15)`;
+      ctx.beginPath();
+      ctx.moveTo(rcx - maxRadius, rcy);
+      ctx.lineTo(rcx + maxRadius, rcy);
+      ctx.moveTo(rcx, rcy - maxRadius);
+      ctx.lineTo(rcx, rcy + maxRadius);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(rcx, rcy);
+      ctx.arc(rcx, rcy, maxRadius, radarAngle - 0.45, radarAngle);
+      ctx.closePath();
+      const sweepGrad = ctx.createRadialGradient(rcx, rcy, 0, rcx, rcy, maxRadius);
+      sweepGrad.addColorStop(0, `rgba(${radarColor}, 0.28)`);
+      sweepGrad.addColorStop(1, `rgba(${radarColor}, 0.03)`);
+      ctx.fillStyle = sweepGrad;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.strokeStyle = `rgba(${radarColor}, 0.85)`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(rcx, rcy);
+      ctx.lineTo(rcx + Math.cos(radarAngle) * maxRadius, rcy + Math.sin(radarAngle) * maxRadius);
+      ctx.stroke();
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const bx = rcx + Math.cos(p.angle) * (p.dist * (maxRadius / 140));
+        const by = rcy + Math.sin(p.angle) * (p.dist * (maxRadius / 140));
+        const bAlpha = Math.max(0.1, Math.min(0.9, p.alpha + Math.sin(t * p.blinkSpeed + p.phase) * 0.4));
+        ctx.fillStyle = `rgba(${radarColor}, ${bAlpha})`;
+        ctx.beginPath();
+        ctx.arc(bx, by, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (pageType === "climate") {
+      for (let layer = 0; layer < 3; layer++) {
+        const baseOffset = height * (0.45 + layer * 0.2);
+        const freq = 0.008 + layer * 0.004;
+        const speed = (0.7 + layer * 0.5) * (layer % 2 === 0 ? 1 : -1);
+        const amp = 14 + layer * 6;
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        for (let x = 0; x <= width; x += 15) {
+          const y = baseOffset + Math.sin(x * freq + t * speed) * amp + Math.cos(x * 0.003 + t * 0.4) * 8;
+          ctx.lineTo(x, y);
+        }
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        const color = layer === 0 ? "245, 158, 11" : (layer === 1 ? "20, 184, 166" : "59, 130, 246");
+        ctx.fillStyle = `rgba(${color}, 0.06)`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(${color}, 0.22)`;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y -= p.speed;
+        p.x += Math.sin(t + p.phase) * 0.4;
+        if (p.y < -10) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = `rgba(${p.hue}, 0.8)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (pageType === "safety") {
+      const hexR = 34;
+      const hexW = hexR * Math.sqrt(3);
+      const hexH = hexR * 1.5;
+      ctx.strokeStyle = "rgba(45, 212, 191, 0.12)";
+      ctx.lineWidth = 1;
+      for (let y = -hexR; y < height + hexR; y += hexH) {
+        const row = Math.floor(y / hexH);
+        const xOffset = (row % 2 === 0) ? 0 : hexW / 2;
+        for (let x = -hexW + xOffset; x < width + hexW; x += hexW) {
+          const breathe = Math.sin(t * 1.4 + (x + y) * 0.01) * 0.04;
+          if (breathe > 0) {
+            ctx.save();
+            ctx.strokeStyle = `rgba(45, 212, 191, ${0.08 + breathe})`;
+            ctx.beginPath();
+            for (let a = 0; a < 6; a++) {
+              const angle = (Math.PI / 3) * a;
+              const hx = x + hexR * Math.cos(angle);
+              const hy = y + hexR * Math.sin(angle);
+              if (a === 0) ctx.moveTo(hx, hy);
+              else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+        const breathe = Math.sin(t * 2 + p.phase) * 0.2;
+        ctx.globalAlpha = Math.max(0.1, p.alpha + breathe);
+        ctx.fillStyle = p.type === "shield" ? "rgba(45, 212, 191, 0.8)" : "rgba(96, 165, 250, 0.8)";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (pageType === "assistant") {
+      const maxConnectDist = 80;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx * pulseEnergy;
+        p.y += p.vy * pulseEnergy;
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dx = p.x - p2.x;
+          const dy = p.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < maxConnectDist) {
+            const lineAlpha = (1 - dist / maxConnectDist) * 0.38 * pulseEnergy;
+            ctx.strokeStyle = `rgba(147, 197, 253, ${lineAlpha})`;
+            ctx.lineWidth = pulseEnergy > 1.2 ? 1.5 : 1;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+
+        ctx.globalAlpha = Math.min(1, p.alpha * pulseEnergy);
+        ctx.fillStyle = pulseEnergy > 1.2 ? "rgba(191, 219, 254, 0.95)" : "rgba(147, 197, 253, 0.85)";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * (pulseEnergy > 1.2 ? 1.3 : 1), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (pageType === "map") {
+      scanX += 1.8;
+      if (scanX > width + 60) scanX = -60;
+
+      const scanGrad = ctx.createLinearGradient(scanX - 50, 0, scanX, 0);
+      scanGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+      scanGrad.addColorStop(0.8, "rgba(56, 189, 248, 0.12)");
+      scanGrad.addColorStop(1, "rgba(56, 189, 248, 0.45)");
+      ctx.fillStyle = scanGrad;
+      ctx.fillRect(scanX - 50, 0, 50, height);
+
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(scanX, 0);
+      ctx.lineTo(scanX, height);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
+      const stepX = 120, stepY = 60;
+      for (let x = 30; x < width; x += stepX) {
+        for (let y = 20; y < height; y += stepY) {
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.25)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x - 5, y); ctx.lineTo(x + 5, y);
+          ctx.moveTo(x, y - 5); ctx.lineTo(x, y + 5);
+          ctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.r += p.speed;
+        if (p.r > p.maxR) p.r = 10;
+        const rAlpha = (1 - p.r / p.maxR) * 0.35;
+        ctx.strokeStyle = `rgba(56, 189, 248, ${rAlpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(width * 0.88, height * 0.5, p.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (pageType === "about") {
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.y -= p.speed;
+        if (p.y < -20) {
+          p.y = height + 10;
+          p.x = Math.random() * width;
+        }
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = "rgba(125, 211, 252, 0.85)";
+        ctx.font = "11px monospace";
+        ctx.fillText(p.char, p.x, p.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function animate(now) {
+    if (!isRunning) return;
+    ctx.clearRect(0, 0, width, height);
+    drawScene(now);
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  function start() {
+    if (isRunning) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    isRunning = true;
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  function stop() {
+    isRunning = false;
+    if (animFrameId) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+  }
+
+  window.addEventListener("resize", resize);
+
+  if (typeof IntersectionObserver !== "undefined") {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        isVisible = entry.isIntersecting;
+        if (isVisible && !document.hidden) {
+          start();
+        } else {
+          stop();
+        }
+      });
+    }, { threshold: 0.05 });
+    observer.observe(banner);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      stop();
+    } else if (isVisible) {
+      start();
+    }
+  });
+
+  resize();
+  start();
+
+  return {
+    updateWeather(code, isDay, rainProb) {
+      if (pageType !== "forecast") return;
+      if (rainProb >= 45 || (typeof code === "number" && [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(code))) {
+        forecastMode = "rain";
+        banner.setAttribute("data-forecast-weather", "rain");
+      } else if (code === 0 || code === 1) {
+        forecastMode = "sun";
+        banner.setAttribute("data-forecast-weather", "sun");
+      } else {
+        forecastMode = "cloud";
+        banner.removeAttribute("data-forecast-weather");
+      }
+      initParticles();
+    },
+    setTone(tone) {
+      if (pageType !== "alerts") return;
+      alertTone = tone || "green";
+      if (alertTone === "alert") {
+        banner.setAttribute("data-alert-status", "active");
+      } else {
+        banner.removeAttribute("data-alert-status");
+      }
+    },
+    pulse() {
+      pulseEnergy = 2.4;
+    }
+  };
+}
+
 /* ---------------------------------------------------------------- home */
 async function initHome() {
   const input = $("#city"), form = $("#home-form"), live = $("#live"), quick = $("#quick"), qnote = $("#quick-note");
@@ -1346,6 +1840,7 @@ async function initHome() {
 async function initForecast() {
   const input = $("#city"), form = $("#fc-form");
   input.value = myCity();
+  const pageAtmosphere = setupPageAtmosphere("forecast");
 
   async function refresh() {
     const city = input.value.trim() || "Vadodara";
@@ -1357,6 +1852,9 @@ async function initForecast() {
       const w = await getWeather(city);
       store("city", city);
       const d = w.forecast.daily, c = w.forecast.current;
+      if (pageAtmosphere) {
+        pageAtmosphere.updateWeather(c ? c.weather_code : null, c ? c.is_day !== 0 : true, (d && d.precipitation_probability_max) ? d.precipitation_probability_max[0] : 0);
+      }
       status.textContent = `${w.place}, from ${w.source}, fetched ${w.fetched_at}${w.stale ? " (saved copy, may be outdated)" : ""}.`;
 
       const now = $("#fc-now");
@@ -1430,6 +1928,7 @@ async function initForecast() {
 async function initClimate() {
   const input = $("#city"), form = $("#cl-form");
   input.value = myCity();
+  setupPageAtmosphere("climate");
 
   async function refresh() {
     const city = input.value.trim() || "Vadodara";
@@ -1493,6 +1992,7 @@ function showBrowserNotification(title, body) {
 async function initAlerts() {
   const city = $("#city"), st = $("#state"), out = $("#al-result"), stamp = $("#al-status"), form = $("#al-form");
   const notifyBtn = $("#btn-notify"), notifyText = $("#notify-text");
+  const pageAtmosphere = setupPageAtmosphere("alerts");
   STATES.forEach((s) => st.append(new Option(s, s)));
   city.value = myCity();
   const remembered = load("state");
@@ -1557,6 +2057,9 @@ async function initAlerts() {
       const a = await getAlerts(st.value, c);
       out.replaceChildren(buildAlerts(a, c));
       stamp.textContent = `Last checked ${timeIST()}. This page refreshes every 5 minutes.`;
+      if (pageAtmosphere) {
+        pageAtmosphere.setTone(a && a.alerts && a.alerts.length > 0 ? "alert" : "green");
+      }
 
       // Trigger notification if user opted in and unexpired alerts exist
       if (load("notify_alerts") === "1" && Notification.permission === "granted" && a && a.alerts && a.alerts.length > 0) {
@@ -1583,6 +2086,7 @@ async function initAlerts() {
 
 /* ---------------------------------------------------------------- safety page */
 function initSafety() {
+  setupPageAtmosphere("safety");
   const list = $("#kit"), count = $("#kit-count"), bar = $("#kit-bar");
   let done = [];
   try { done = JSON.parse(load("kit") || "[]"); } catch (e) { done = []; }
@@ -1648,6 +2152,7 @@ async function initAssistant() {
   const logEl = $("#log"), emptyEl = $("#empty"), chipsEl = $("#chips");
   const msgEl = $("#msg"), sendEl = $("#send"), micEl = $("#mic"), micStatus = $("#mic-status");
   const radios = [...document.querySelectorAll('input[name="lang"]')];
+  const pageAtmosphere = setupPageAtmosphere("assistant");
   let busy = false;
 
   const getLang = () => (radios.find((r) => r.checked) || radios[0] || { value: "English" }).value;
@@ -1801,6 +2306,7 @@ async function initAssistant() {
     if (!city) { cityEl.focus(); return; }
     busy = true; sendEl.disabled = true; sendEl.textContent = "Asking…";
     emptyEl.hidden = true;
+    if (pageAtmosphere) pageAtmosphere.pulse();
 
     const language = getLang(), code = langCode(language);
     const turn = h("div", "turn"), row = h("div", "user-row");
@@ -2020,6 +2526,7 @@ async function initAssistant() {
 
 /* ---------------------------------------------------------------- about page */
 function initAbout() {
+  setupPageAtmosphere("about");
   const filterBtns = document.querySelectorAll(".eval-filter-btn");
   const searchInput = document.getElementById("evalSearch");
   const rows = document.querySelectorAll("#evalTable tbody tr[data-cat]");
@@ -2087,6 +2594,7 @@ function initServiceWorker() {
 
 /* ---------------------------------------------------------------- map page */
 async function initMap() {
+  setupPageAtmosphere("map");
   const mapEl = document.getElementById("weather-map");
   if (!mapEl || typeof L === "undefined") return;
 
@@ -2652,7 +3160,7 @@ function boot() {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { dayClass, todayLine, alertSummary, rainLines, tempChart, renderRich, friendly, num, wmo, conditionOf, rangeBar, seasonChart, tempPhrase, resolveWeatherAtmosphere };
+  module.exports = { dayClass, todayLine, alertSummary, rainLines, tempChart, renderRich, friendly, num, wmo, conditionOf, rangeBar, seasonChart, tempPhrase, resolveWeatherAtmosphere, setupPageAtmosphere };
 } else {
   document.addEventListener("DOMContentLoaded", boot);
 }
