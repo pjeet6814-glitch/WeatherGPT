@@ -1,4 +1,14 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py?__route__=$1"
+    },
+    {
+      "source": "/api",
+      "destination": "/api/index.py?__route__="
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",
