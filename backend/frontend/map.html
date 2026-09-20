@@ -3,21 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Official weather alerts: WeatherGPT</title>
-<meta name="description" content="Current government weather alerts for your state from NDMA SACHET, shown exactly as published.">
+<title>Interactive Weather &amp; Alert Map: WeatherGPT</title>
+<meta name="description" content="Live interactive weather radar, temperature map, and official district warning zones across India.">
 <script>try{var t=localStorage.getItem("wgpt_theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230C3440'/%3E%3Cpath d='M7 10h18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 16v9M16 16v11M21 16v6' stroke='%238FD3F0' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,600..800&family=Mukta:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<!-- Leaflet.js -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <meta name="theme-color" content="#0C3440">
 <link rel="manifest" href="manifest.json">
 <script src="assets/config.js"></script>
 <script src="assets/i18n.js"></script>
 <script src="assets/app.js" defer></script>
 </head>
-<body data-page="alerts">
+<body data-page="map">
 <a class="skip" href="#main">Skip to content</a>
 <header class="site">
   <div class="offline-banner" id="offline-banner" hidden>
@@ -32,8 +35,8 @@
         <a href="index.html" data-i18n="nav_home">Home</a>
         <a href="assistant.html" data-i18n="nav_ask">Ask</a>
         <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
-        <a href="alerts.html" aria-current="page" data-i18n="nav_alerts">Alerts</a>
-        <a href="map.html" data-i18n="nav_map">Map</a>
+        <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="map.html" aria-current="page">Map</a>
         <a href="climate.html" data-i18n="nav_climate">Climate</a>
         <a href="safety.html" data-i18n="nav_safety">Safety</a>
         <a href="about.html" data-i18n="nav_about">About</a>
@@ -51,31 +54,47 @@
 
 <main id="main" class="wrap">
   <div class="page-head">
-    <h1 data-i18n="card_al_h">Official alerts</h1>
-    <p class="lede" data-i18n="card_al_p">Warnings issued by IMD and state authorities, shown exactly as published. Each one lists when it stops being valid.</p>
-    <form class="toolbar" id="al-form">
-      <div class="field"><label for="city" data-i18n="city_label">Town or city</label><input id="city" type="text" autocomplete="off" placeholder="For example, Vadodara" data-i18n-placeholder="city_placeholder"></div>
-      <div class="field"><label for="state">State or union territory</label><select id="state"></select></div>
-      <button class="btn" type="submit">Check alerts</button>
-      <button class="btn" id="btn-notify" type="button" style="background:var(--surface); color:var(--ink); border:1px solid var(--line); display:inline-flex; align-items:center; gap:6px;">
-        <span id="notify-icon">🔔</span> <span id="notify-text">Alert Me</span>
+    <h1>Live Weather &amp; Alert Map</h1>
+    <p class="lede">Explore live temperatures, real-time rain radar overlays, and official NDMA SACHET warning districts across India.</p>
+    
+    <form class="toolbar" id="map-form" onsubmit="return false;">
+      <div class="field">
+        <label for="map-city" data-i18n="city_label">Jump to City</label>
+        <input id="map-city" type="text" autocomplete="off" placeholder="Search city (e.g. Vadodara, Ahmedabad, Surat, Delhi)" data-i18n-placeholder="city_placeholder">
+      </div>
+      <button class="btn" id="btn-map-go" type="button">Locate &amp; View</button>
+      <button class="btn secondary" id="btn-map-locate" type="button" style="display:inline-flex; align-items:center; gap:6px;">
+        <span>📍</span> <span>My Location</span>
       </button>
     </form>
-    <p class="note" id="al-status" aria-live="polite"></p>
+
+    <div class="map-controls-bar">
+      <button type="button" class="map-pill active" id="toggle-radar">🌧️ Rain Radar</button>
+      <button type="button" class="map-pill active" id="toggle-markers">🌡️ City Temperature &amp; AQI</button>
+      <span class="note" id="map-status" style="margin-left:auto;">Loading interactive map…</span>
+    </div>
   </div>
 
-  <div id="al-result" aria-live="polite"></div>
+  <div class="map-wrap">
+    <div id="weather-map"></div>
+  </div>
 
-  <section class="section" aria-labelledby="h-read">
-    <h2 id="h-read">How to read an alert</h2>
-    <p class="lede">IMD uses four colours in its bulletins. The alerts above carry IMD's own wording, so read the text and the valid-until time first.</p>
-    <ul class="legend">
-      <li><i style="background:#2E8B57"></i><div><b>Green: no warning</b>No action needed.</div></li>
-      <li><i style="background:#F2C200"></i><div><b>Yellow: be aware</b>Weather may turn bad. Keep checking for updates.</div></li>
-      <li><i style="background:#EF7B10"></i><div><b>Orange: be prepared</b>Severe weather is likely and may disrupt travel or services.</div></li>
-      <li><i style="background:#C62828"></i><div><b>Red: take action</b>Dangerous weather is expected. Follow instructions from your authorities.</div></li>
-    </ul>
-    <p class="note" style="margin-top:22px">"No alerts" means nothing is currently published for your state. It does not mean the weather is harmless. A short-range alert can appear at any time.</p>
+  <section class="section" style="margin-top: 2rem;">
+    <h2>Understanding Map Overlays</h2>
+    <div class="cards" style="margin-top: 1rem;">
+      <div class="card">
+        <h3>🌧️ RainViewer Real-time Radar</h3>
+        <p>Live satellite and precipitation radar imagery covering India and South Asia, updated every 10 minutes to track incoming rain fronts.</p>
+      </div>
+      <div class="card">
+        <h3>🌡️ Ground Station &amp; Model Data</h3>
+        <p>Dynamic badges display live 2-meter air temperature and Indian CPCB Air Quality Index (AQI) from Open-Meteo meteorological models.</p>
+      </div>
+      <div class="card">
+        <h3>⚠️ SACHET Warning Indicators</h3>
+        <p>Cities located in states with active NDMA SACHET or IMD warnings pulse in red. Click any city pin to view full details or ask WeatherGPT.</p>
+      </div>
+    </div>
   </section>
 </main>
 
@@ -88,8 +107,10 @@
     <div>
       <h2 data-i18n="foot_sources">Data sources</h2>
       <ul>
-        <li>Forecasts and climate averages: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
-        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a>, which carries IMD and state warnings</li>
+        <li>Forecasts &amp; AQI: <a href="https://open-meteo.com" target="_blank" rel="noopener noreferrer">Open-Meteo</a></li>
+        <li>Alerts: <a href="https://sachet.ndma.gov.in" target="_blank" rel="noopener noreferrer">NDMA SACHET</a></li>
+        <li>Live Rain Radar: <a href="https://www.rainviewer.com" target="_blank" rel="noopener noreferrer">RainViewer API</a></li>
+        <li>Map tiles: <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors</li>
       </ul>
     </div>
     <div>

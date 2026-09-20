@@ -33,6 +33,7 @@
         <a href="assistant.html" data-i18n="nav_ask">Ask</a>
         <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
         <a href="alerts.html" aria-current="page" data-i18n="nav_alerts">Alerts</a>
+        <a href="map.html" data-i18n="nav_map">Map</a>
         <a href="climate.html" data-i18n="nav_climate">Climate</a>
         <a href="safety.html" data-i18n="nav_safety">Safety</a>
         <a href="about.html" data-i18n="nav_about">About</a>
@@ -56,6 +57,9 @@
       <div class="field"><label for="city" data-i18n="city_label">Town or city</label><input id="city" type="text" autocomplete="off" placeholder="For example, Vadodara" data-i18n-placeholder="city_placeholder"></div>
       <div class="field"><label for="state">State or union territory</label><select id="state"></select></div>
       <button class="btn" type="submit">Check alerts</button>
+      <button class="btn" id="btn-notify" type="button" style="background:var(--surface); color:var(--ink); border:1px solid var(--line); display:inline-flex; align-items:center; gap:6px;">
+        <span id="notify-icon">🔔</span> <span id="notify-text">Alert Me</span>
+      </button>
     </form>
     <p class="note" id="al-status" aria-live="polite"></p>
   </div>

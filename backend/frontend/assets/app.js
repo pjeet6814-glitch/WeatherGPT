@@ -925,13 +925,78 @@ async function initClimate() {
   refresh();
 }
 
+function showBrowserNotification(title, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, {
+          body,
+          icon: "assets/icon-192.png",
+          badge: "assets/icon-192.png",
+          vibrate: [200, 100, 200],
+          tag: "weather-alert",
+        });
+      });
+    } else {
+      new Notification(title, { body, icon: "assets/icon-192.png" });
+    }
+  } catch (e) {
+    console.warn("Notification dispatch failed:", e);
+  }
+}
+
 /* ---------------------------------------------------------------- alerts page */
 async function initAlerts() {
   const city = $("#city"), st = $("#state"), out = $("#al-result"), stamp = $("#al-status"), form = $("#al-form");
+  const notifyBtn = $("#btn-notify"), notifyText = $("#notify-text");
   STATES.forEach((s) => st.append(new Option(s, s)));
   city.value = myCity();
   const remembered = load("state");
   if (remembered) setState(remembered);
+
+  function updateNotifyUI() {
+    if (!notifyBtn) return;
+    if (!("Notification" in window)) {
+      notifyBtn.hidden = true;
+      return;
+    }
+    const subscribed = load("notify_alerts") === "1" && Notification.permission === "granted";
+    if (subscribed) {
+      notifyBtn.classList.add("active");
+      if (notifyText) notifyText.textContent = "Subscribed (🔔 Alerts On)";
+    } else {
+      notifyBtn.classList.remove("active");
+      if (notifyText) notifyText.textContent = "Alert Me";
+    }
+  }
+
+  if (notifyBtn) {
+    updateNotifyUI();
+    notifyBtn.addEventListener("click", async () => {
+      if (!("Notification" in window)) {
+        alert("Browser notifications are not supported on this device.");
+        return;
+      }
+      if (Notification.permission === "granted") {
+        const current = load("notify_alerts") === "1";
+        store("notify_alerts", current ? "0" : "1");
+        updateNotifyUI();
+        if (!current) {
+          showBrowserNotification("WeatherGPT Alerts Active", `You will be notified of official warnings in ${st.value}.`);
+        }
+      } else if (Notification.permission !== "denied") {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          store("notify_alerts", "1");
+          updateNotifyUI();
+          showBrowserNotification("WeatherGPT Alerts Active", `You will be notified of official warnings in ${st.value}.`);
+        }
+      } else {
+        alert("Notifications are blocked in your browser settings. Please enable notifications for WeatherGPT to receive alerts.");
+      }
+    });
+  }
 
   function setState(s) {
     if (!s) return;
@@ -949,6 +1014,16 @@ async function initAlerts() {
       const a = await getAlerts(st.value, c);
       out.replaceChildren(buildAlerts(a, c));
       stamp.textContent = `Last checked ${timeIST()}. This page refreshes every 5 minutes.`;
+
+      // Trigger notification if user opted in and unexpired alerts exist
+      if (load("notify_alerts") === "1" && Notification.permission === "granted" && a && a.alerts && a.alerts.length > 0) {
+        const topAlert = a.alerts[0];
+        const lastNotified = load("last_notified_alert");
+        if (lastNotified !== topAlert.title) {
+          store("last_notified_alert", topAlert.title);
+          showBrowserNotification(`⚠️ Weather Alert: ${st.value}`, `${topAlert.title} (Valid until ${topAlert.valid_until})`);
+        }
+      }
     } catch (e) {
       out.replaceChildren(errBox(e));
       stamp.textContent = "";
@@ -990,9 +1065,43 @@ function initSafety() {
   update();
 }
 
+function renderAgriCard(adv, container) {
+  if (!container || !adv) return;
+  container.replaceChildren();
+  const box = h("div", "agri-box");
+  const head = h("div", "agri-head");
+  head.innerHTML = `<h4>🌾 ${adv.crop_name} Advisory</h4><span class="badge">${Math.round(adv.weather_summary.temp_c)}°C | ${adv.weather_summary.humidity_pct}% RH | ${num(adv.weather_summary.wind_kmh)} km/h</span>`;
+  box.append(head);
+
+  const grid = h("div", "agri-grid");
+
+  // Spraying
+  const sp = h("div", "agri-item");
+  sp.innerHTML = `<span class="agri-tag" style="background:${adv.spraying.color}20; color:${adv.spraying.color}; border:1px solid ${adv.spraying.color}40;">🧪 Spraying: ${adv.spraying.badge}</span><p class="agri-desc">${adv.spraying.reason}</p>`;
+  grid.append(sp);
+
+  // Irrigation
+  const ir = h("div", "agri-item");
+  ir.innerHTML = `<span class="agri-tag" style="background:${adv.irrigation.color}20; color:${adv.irrigation.color}; border:1px solid ${adv.irrigation.color}40;">💧 Irrigation: ${adv.irrigation.badge}</span><p class="agri-desc">${adv.irrigation.reason}</p>`;
+  grid.append(ir);
+
+  // Disease/Pest
+  const pd = h("div", "agri-item");
+  pd.innerHTML = `<span class="agri-tag" style="background:${adv.pest_disease.color}20; color:${adv.pest_disease.color}; border:1px solid ${adv.pest_disease.color}40;">🐛 Disease/Pest: ${adv.pest_disease.level} Risk</span><p class="agri-desc">${adv.pest_disease.warning}</p>`;
+  grid.append(pd);
+
+  // Harvesting
+  const hv = h("div", "agri-item");
+  hv.innerHTML = `<span class="agri-tag" style="background:#0284c720; color:#0284c7; border:1px solid #0284c740;">🚜 Harvest: ${adv.harvesting.badge}</span><p class="agri-desc">${adv.harvesting.reason}</p>`;
+  grid.append(hv);
+
+  box.append(grid);
+  container.append(box);
+}
+
 /* ---------------------------------------------------------------- assistant page */
 async function initAssistant() {
-  const cityEl = $("#city"), roleEl = $("#role");
+  const cityEl = $("#city"), roleEl = $("#role"), cropFieldEl = $("#crop-field"), cropEl = $("#crop"), agriCardEl = $("#agri-card");
   const logEl = $("#log"), emptyEl = $("#empty"), chipsEl = $("#chips");
   const msgEl = $("#msg"), sendEl = $("#send"), micEl = $("#mic"), micStatus = $("#mic-status");
   const radios = [...document.querySelectorAll('input[name="lang"]')];
@@ -1003,7 +1112,29 @@ async function initAssistant() {
 
   cityEl.value = myCity();
   roleEl.value = load("role") || "general";
+  if (cropEl) cropEl.value = load("crop") || "cotton";
   setLang(load("lang") || "English");
+
+  async function loadAgriCard() {
+    if (!agriCardEl) return;
+    const isFarmer = roleEl.value === "farmer";
+    if (!isFarmer) {
+      agriCardEl.hidden = true;
+      if (cropFieldEl) cropFieldEl.hidden = true;
+      return;
+    }
+    agriCardEl.hidden = false;
+    if (cropFieldEl) cropFieldEl.hidden = false;
+    const city = cityEl.value.trim() || "Vadodara";
+    const crop = cropEl ? cropEl.value : "cotton";
+    agriCardEl.replaceChildren(h("p", "note", "Loading agricultural advisory…"));
+    try {
+      const adv = await api(`/api/agri?city=${encodeURIComponent(city)}&crop=${encodeURIComponent(crop)}`);
+      renderAgriCard(adv, agriCardEl);
+    } catch (e) {
+      agriCardEl.replaceChildren(h("p", "note", "Agri advisory unavailable right now."));
+    }
+  }
 
   function renderChips() {
     chipsEl.replaceChildren();
@@ -1036,10 +1167,21 @@ async function initAssistant() {
   }
 
   radios.forEach((r) => r.addEventListener("change", () => { store("lang", getLang()); if (!emptyEl.hidden) renderChips(); }));
-  roleEl.addEventListener("change", () => { store("role", roleEl.value); if (!emptyEl.hidden) renderChips(); });
-  cityEl.addEventListener("change", () => railToday());
+  roleEl.addEventListener("change", () => {
+    store("role", roleEl.value);
+    loadAgriCard();
+    if (!emptyEl.hidden) renderChips();
+  });
+  if (cropEl) {
+    cropEl.addEventListener("change", () => {
+      store("crop", cropEl.value);
+      loadAgriCard();
+    });
+  }
+  cityEl.addEventListener("change", () => { railToday(); loadAgriCard(); });
   renderChips();
   railToday();
+  loadAgriCard();
 
   function speak(text, code, btn) {
     if (!("speechSynthesis" in window)) return;
@@ -1130,10 +1272,11 @@ async function initAssistant() {
     scrollDown();
 
     try {
+      const crop = (cropEl && roleEl.value === "farmer") ? cropEl.value : "general";
       const d = await api("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: question, city, language, role: roleEl.value }),
+        body: JSON.stringify({ message: question, city, language, role: roleEl.value, crop }),
       }, city);
       bot.replaceChildren();
       bot.append(botHead());
@@ -1141,6 +1284,18 @@ async function initAssistant() {
       const lab = h("p", "section-title", "Explained by AI ");
       lab.append(h("span", null, `in ${language}, using only the forecast and alerts above`));
       bot.append(lab);
+
+      if (roleEl.value === "farmer" && d.agri) {
+        const agChips = h("div", "agri-chat-chips");
+        agChips.innerHTML = `
+          <span class="ag-chip" style="color:${d.agri.spraying.color}">🧪 Spray: ${d.agri.spraying.badge}</span>
+          <span class="ag-chip" style="color:${d.agri.irrigation.color}">💧 Irrigation: ${d.agri.irrigation.badge}</span>
+          <span class="ag-chip" style="color:${d.agri.pest_disease.color}">🐛 Pest: ${d.agri.pest_disease.level}</span>
+          <span class="ag-chip" style="color:#0284c7">🚜 Harvest: ${d.agri.harvesting.badge}</span>
+        `;
+        bot.append(agChips);
+      }
+
       const wrap = h("div", "answer-wrap"), ans = h("div", "answer");
       ans.lang = code.split("-")[0];
       ans.innerHTML = renderRich(d.answer);
@@ -1202,6 +1357,9 @@ async function initAssistant() {
         if (g.aqi && g.aqi.pm2_5 != null) {
           const ch = h("span", "why-chip"); ch.innerHTML = `Air Quality: <b>${g.aqi.category} (PM2.5: ${Math.round(g.aqi.pm2_5)})</b>`; chipWrap.append(ch);
         }
+        if (g.agri && g.agri.crop_name) {
+          const ch = h("span", "why-chip"); ch.innerHTML = `Crop: <b>${g.agri.crop_name.split(" ")[0]}</b> | Spray: <b>${g.agri.spraying.badge}</b>`; chipWrap.append(ch);
+        }
         secNumbers.append(chipWrap);
         body.append(secNumbers);
 
@@ -1211,6 +1369,9 @@ async function initAssistant() {
         const alertList = h("ul", "why-list");
         if (g.aqi && g.aqi.advisory) {
           alertList.append(h("li", null, `[Air Quality Advisory] ${g.aqi.category}: ${g.aqi.advisory}`));
+        }
+        if (g.agri && g.agri.spraying) {
+          alertList.append(h("li", null, `[Crop Advisory - ${g.agri.crop_name}] Spray: ${g.agri.spraying.badge} (${g.agri.spraying.reason}); Pest Risk: ${g.agri.pest_disease.level} (${g.agri.pest_disease.warning})`));
         }
         if (g.alerts_checked && g.alerts_checked.items && g.alerts_checked.items.length) {
           g.alerts_checked.items.forEach((item) => {
@@ -1381,6 +1542,205 @@ function initServiceWorker() {
   }
 }
 
+/* ---------------------------------------------------------------- map page */
+async function initMap() {
+  const mapEl = document.getElementById("weather-map");
+  if (!mapEl || typeof L === "undefined") return;
+
+  const statusEl = document.getElementById("map-status");
+  const cityInput = document.getElementById("map-city");
+  const btnGo = document.getElementById("btn-map-go");
+  const btnLocate = document.getElementById("btn-map-locate");
+  const toggleRadar = document.getElementById("toggle-radar");
+  const toggleMarkers = document.getElementById("toggle-markers");
+
+  const map = L.map("weather-map", {
+    center: [21.5, 78.9],
+    zoom: 5,
+    minZoom: 4,
+    maxZoom: 18,
+    zoomControl: true,
+  });
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/">CARTO</a>',
+    subdomains: "abcd",
+    maxZoom: 19,
+  }).addTo(map);
+
+  // RainViewer Live Weather Radar Overlay
+  let radarLayer = null;
+  async function loadRadarLayer() {
+    try {
+      const resp = await fetch("https://api.rainviewer.com/public/weather-maps.json");
+      const data = await resp.json();
+      if (data && data.radar && data.radar.past && data.radar.past.length > 0) {
+        const latest = data.radar.past[data.radar.past.length - 1];
+        const tilePath = latest.path;
+        radarLayer = L.tileLayer(`https://tilecache.rainviewer.com${tilePath}/256/{z}/{x}/{y}/2/1_1.png`, {
+          opacity: 0.65,
+          zIndex: 500,
+          attribution: '&copy; <a href="https://www.rainviewer.com">RainViewer</a>',
+        });
+        if (!toggleRadar || toggleRadar.classList.contains("active")) {
+          radarLayer.addTo(map);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load RainViewer radar layer:", e);
+    }
+  }
+  loadRadarLayer();
+
+  const CITIES = [
+    { name: "Vadodara", state: "Gujarat", lat: 22.3072, lon: 73.1812 },
+    { name: "Ahmedabad", state: "Gujarat", lat: 23.0225, lon: 72.5714 },
+    { name: "Surat", state: "Gujarat", lat: 21.1702, lon: 72.8311 },
+    { name: "Rajkot", state: "Gujarat", lat: 22.3039, lon: 70.8022 },
+    { name: "Mumbai", state: "Maharashtra", lat: 19.0760, lon: 72.8777 },
+    { name: "Pune", state: "Maharashtra", lat: 18.5204, lon: 73.8567 },
+    { name: "Delhi", state: "Delhi", lat: 28.6139, lon: 77.2090 },
+    { name: "Jaipur", state: "Rajasthan", lat: 26.9124, lon: 75.7873 },
+    { name: "Lucknow", state: "Uttar Pradesh", lat: 26.8467, lon: 80.9462 },
+    { name: "Kolkata", state: "West Bengal", lat: 22.5726, lon: 88.3639 },
+    { name: "Bengaluru", state: "Karnataka", lat: 12.9716, lon: 77.5946 },
+    { name: "Chennai", state: "Tamil Nadu", lat: 13.0827, lon: 80.2707 },
+    { name: "Hyderabad", state: "Telangana", lat: 17.3850, lon: 78.4867 },
+    { name: "Bhopal", state: "Madhya Pradesh", lat: 23.2599, lon: 77.4126 },
+    { name: "Patna", state: "Bihar", lat: 25.5941, lon: 85.1376 },
+    { name: "Bhubaneswar", state: "Odisha", lat: 20.2961, lon: 85.8245 },
+    { name: "Guwahati", state: "Assam", lat: 26.1445, lon: 91.7362 },
+  ];
+
+  const markerGroup = L.layerGroup().addTo(map);
+
+  async function fetchAndRenderCity(c) {
+    try {
+      const [w, aqi, al] = await Promise.allSettled([
+        getWeather(c.name),
+        getAqi(c.name),
+        getAlerts(c.state, c.name),
+      ]);
+      const weatherData = w.status === "fulfilled" ? w.value : null;
+      const aqiData = aqi.status === "fulfilled" ? aqi.value : null;
+      const alertData = al.status === "fulfilled" ? al.value : null;
+
+      const current = weatherData ? weatherData.forecast.current : null;
+      const temp = current ? Math.round(current.temperature_2m) : "--";
+      const hasAlert = alertData && alertData.alerts && alertData.alerts.length > 0;
+      const aqiCat = aqiData && aqiData.category ? aqiData.category : "N/A";
+      const aqiCol = aqiData && aqiData.color ? aqiData.color : "#64748b";
+
+      const iconHtml = `
+        <div class="city-marker-badge ${hasAlert ? "has-alert" : ""}" title="${c.name}: ${temp}°C, AQI: ${aqiCat}">
+          <span class="name">${c.name}</span>
+          <span class="temp">${temp}°C</span>
+        </div>
+      `;
+
+      const customIcon = L.divIcon({
+        html: iconHtml,
+        className: "custom-div-marker",
+        iconSize: [64, 38],
+        iconAnchor: [32, 19],
+      });
+
+      const marker = L.marker([c.lat, c.lon], { icon: customIcon });
+
+      const alertBanner = hasAlert
+        ? `<div style="background:#fee2e2; border-left:3px solid #dc2626; padding:6px 8px; margin:6px 0; border-radius:4px; font-size:12px; color:#991b1b;">
+             <b>⚠️ ${alertData.alerts[0].title}</b><br>
+             <span style="font-size:11px;">Valid until: ${alertData.alerts[0].valid_until}</span>
+           </div>`
+        : `<p style="color:#16a34a; font-size:12px; margin:4px 0;">✓ No unexpired SACHET alerts for this state.</p>`;
+
+      const popupHtml = `
+        <div class="map-popup-card">
+          <h3>${c.name}, ${c.state}</h3>
+          <p>🌡️ <b>Temperature:</b> ${temp}°C (Feels like: ${current ? Math.round(current.apparent_temperature || current.temperature_2m) : "--"}°C)</p>
+          <p>💧 <b>Humidity:</b> ${current ? current.relative_humidity_2m : "--"}% | 💨 <b>Wind:</b> ${current ? num(current.wind_speed_10m) : "--"} km/h</p>
+          <p>🍃 <b>AQI:</b> <span style="font-weight:bold; color:${aqiCol};">${aqiCat}</span> (PM2.5: ${aqiData && aqiData.pm2_5 ? Math.round(aqiData.pm2_5) : "--"} µg/m³)</p>
+          ${alertBanner}
+          <a class="popup-btn" href="assistant.html?q=What%20is%20the%20weather%20and%20safety%20advisory%20for%20${encodeURIComponent(c.name)}%3F">💬 Ask WeatherGPT about ${c.name}</a>
+        </div>
+      `;
+
+      marker.bindPopup(popupHtml);
+      markerGroup.addLayer(marker);
+    } catch (e) {
+      console.warn("Failed to load marker for", c.name, e);
+    }
+  }
+
+  if (statusEl) statusEl.textContent = "Loading city weather markers…";
+  for (const c of CITIES) {
+    fetchAndRenderCity(c);
+  }
+  if (statusEl) statusEl.textContent = "Interactive map ready.";
+
+  if (toggleRadar) {
+    toggleRadar.addEventListener("click", () => {
+      const active = toggleRadar.classList.toggle("active");
+      if (radarLayer) {
+        if (active) map.addLayer(radarLayer);
+        else map.removeLayer(radarLayer);
+      }
+    });
+  }
+
+  if (toggleMarkers) {
+    toggleMarkers.addEventListener("click", () => {
+      const active = toggleMarkers.classList.toggle("active");
+      if (active) map.addLayer(markerGroup);
+      else map.removeLayer(markerGroup);
+    });
+  }
+
+  async function jumpToCity(cityName) {
+    if (!cityName) return;
+    if (statusEl) statusEl.textContent = `Locating ${cityName}…`;
+    try {
+      const w = await getWeather(cityName);
+      if (w && w.latitude && w.longitude) {
+        map.flyTo([w.latitude, w.longitude], 10, { duration: 1.5 });
+        fetchAndRenderCity({ name: w.place.split(",")[0], state: w.state || "", lat: w.latitude, lon: w.longitude });
+        if (statusEl) statusEl.textContent = `Viewing ${w.place}`;
+      }
+    } catch (e) {
+      if (statusEl) statusEl.textContent = `Could not find "${cityName}".`;
+    }
+  }
+
+  if (btnGo && cityInput) {
+    btnGo.addEventListener("click", () => jumpToCity(cityInput.value.trim()));
+    cityInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        jumpToCity(cityInput.value.trim());
+      }
+    });
+  }
+
+  if (btnLocate) {
+    btnLocate.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        return;
+      }
+      if (statusEl) statusEl.textContent = "Finding your location…";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          map.flyTo([pos.coords.latitude, pos.coords.longitude], 11, { duration: 1.5 });
+          if (statusEl) statusEl.textContent = "Centered on your location.";
+        },
+        (err) => {
+          if (statusEl) statusEl.textContent = "Location permission denied.";
+        }
+      );
+    });
+  }
+}
+
 /* ---------------------------------------------------------------- boot */
 function boot() {
   const menu = $(".menu"), nav = $("#nav");
@@ -1394,7 +1754,7 @@ function boot() {
   initNetworkStatus();
   initServiceWorker();
   const page = document.body.dataset.page;
-  const inits = { home: initHome, forecast: initForecast, climate: initClimate, alerts: initAlerts, safety: initSafety, assistant: initAssistant, about: initAbout };
+  const inits = { home: initHome, forecast: initForecast, climate: initClimate, alerts: initAlerts, safety: initSafety, assistant: initAssistant, about: initAbout, map: initMap };
   if (inits[page]) inits[page]();
 }
 

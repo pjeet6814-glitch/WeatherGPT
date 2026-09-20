@@ -8,12 +8,15 @@ const TRANSLATIONS = {
     nav_ask: "Ask",
     nav_forecast: "Forecast",
     nav_alerts: "Alerts",
+    nav_map: "Map",
     nav_climate: "Climate",
     nav_safety: "Safety",
     nav_about: "About",
     btn_ask_nav: "Ask a question",
     menu_btn: "Menu",
     theme_btn: "Switch to dark mode",
+    crop_label: "Crop",
+    crop_advisory_title: "Agricultural Advisory",
     
     // Offline Banner
     offline_msg: "⚠️ You are offline. Showing last cached weather forecast & emergency guidance.",
@@ -79,12 +82,15 @@ const TRANSLATIONS = {
     nav_ask: "पूछें",
     nav_forecast: "पूर्वानुमान",
     nav_alerts: "चेतावनियाँ",
+    nav_map: "मानचित्र",
     nav_climate: "जलवायु",
     nav_safety: "सुरक्षा",
     nav_about: "परिचय",
     btn_ask_nav: "प्रश्न पूछें",
     menu_btn: "मेनू",
     theme_btn: "डार्क मोड बदलें",
+    crop_label: "मुख्य फसल",
+    crop_advisory_title: "कृषि सलाह",
     
     // Offline Banner
     offline_msg: "⚠️ आप ऑफ़लाइन हैं। अंतिम सहेजा गया मौसम पूर्वानुमान और आपातकालीन मार्गदर्शिका दिखाई जा रही है।",
@@ -150,12 +156,15 @@ const TRANSLATIONS = {
     nav_ask: "પૂછો",
     nav_forecast: "આગાહી",
     nav_alerts: "ચેતવણીઓ",
+    nav_map: "નકશો",
     nav_climate: "આબોહવા",
     nav_safety: "સુરક્ષા",
     nav_about: "વિશે",
     btn_ask_nav: "પ્રશ્ન પૂછો",
     menu_btn: "મેનુ",
     theme_btn: "ડાર્ક મોડ બદલો",
+    crop_label: "મુખ્ય પાક",
+    crop_advisory_title: "ખેતીવાડી સલાહ",
     
     // Offline Banner
     offline_msg: "⚠️ તમે અત્યારે ઑફલાઇન છો. છેલ્લી સેવ કરેલી હવામાન આગાહી અને કટોકટી માર્ગદર્શિકા બતાવાય છે.",

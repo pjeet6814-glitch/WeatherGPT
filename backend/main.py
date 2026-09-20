@@ -75,6 +75,7 @@ class ChatRequest(BaseModel):
     city: str = Field("Vadodara", max_length=80)
     language: str = "English"  # e.g. "Hindi", "Gujarati"
     role: str = "general"      # "farmer" | "commuter" | "general"
+    crop: str = "general"      # "cotton" | "groundnut" | "wheat" | "rice" | "mustard" | "sugarcane"
 
 
 # ---------------------------------------------------------------- weather
@@ -489,6 +490,210 @@ def describe_aqi(aqi) -> str:
             f"- Health Advisory: {aqi['advisory']}")
 
 
+# ----------------------------------------------------------------- agricultural advisory
+CROPS = {
+    "cotton": {"name": "Cotton (કપાસ / कपास)", "temp_min": 18, "temp_max": 35},
+    "groundnut": {"name": "Groundnut (મગફળી / मूंगफली)", "temp_min": 20, "temp_max": 32},
+    "wheat": {"name": "Wheat (ઘઉં / गेहूं)", "temp_min": 10, "temp_max": 25},
+    "rice": {"name": "Rice (ડાંગર / चावल)", "temp_min": 20, "temp_max": 35},
+    "mustard": {"name": "Mustard (રાયડો / सरसों)", "temp_min": 10, "temp_max": 25},
+    "sugarcane": {"name": "Sugarcane (શેરડી / गन्ना)", "temp_min": 20, "temp_max": 38},
+    "general": {"name": "General Crops", "temp_min": 15, "temp_max": 35},
+}
+
+
+def compute_agri_advisory(weather: dict, crop: str = "general") -> dict:
+    crop_clean = crop.lower().strip()
+    crop_info = CROPS.get(crop_clean, CROPS["general"])
+    current = weather.get("forecast", {}).get("current", {})
+    daily = weather.get("forecast", {}).get("daily", {})
+
+    wind = float(current.get("wind_speed_10m", 0.0) or 0.0)
+    humidity = float(current.get("relative_humidity_2m", 50.0) or 50.0)
+    temp = float(current.get("temperature_2m", 25.0) or 25.0)
+
+    rain_probs = daily.get("precipitation_probability_max", [0])[:2]
+    rain_sums = daily.get("precipitation_sum", [0])[:2]
+    max_rain_prob = max([p for p in rain_probs if p is not None] or [0])
+    total_rain_2d = sum([s for s in rain_sums if s is not None] or [0.0])
+
+    # 1. Spraying Advisory (Pesticides / Foliar Fertilizers)
+    if wind > 15:
+        spray_status = "unfavorable"
+        spray_badge = "Not Recommended"
+        spray_color = "#dc2626"
+        spray_reason = f"High wind speed ({wind:.1f} km/h) causes excessive drift and chemical loss."
+    elif max_rain_prob >= 40 or total_rain_2d >= 2.0:
+        spray_status = "unfavorable"
+        spray_badge = "Postpone Spraying"
+        spray_color = "#dc2626"
+        spray_reason = f"Rain likely ({max_rain_prob}% chance, {total_rain_2d:.1f} mm). Rain will wash away applied chemicals."
+    elif wind >= 12:
+        spray_status = "caution"
+        spray_badge = "Caution (Windy)"
+        spray_color = "#d97706"
+        spray_reason = f"Wind is {wind:.1f} km/h. Spray only in early morning using low-pressure nozzles."
+    else:
+        spray_status = "favorable"
+        spray_badge = "Favorable Window"
+        spray_color = "#16a34a"
+        spray_reason = f"Wind is calm ({wind:.1f} km/h) with low rain risk. Optimal window for crop spraying."
+
+    # 2. Irrigation Advisory
+    if total_rain_2d >= 5.0 or max_rain_prob >= 60:
+        irri_status = "hold"
+        irri_badge = "Hold Irrigation"
+        irri_color = "#2563eb"
+        irri_reason = f"Rain expected ({total_rain_2d:.1f} mm, {max_rain_prob}% prob). Postpone irrigation to save water and avoid root rot."
+    elif temp >= 36:
+        irri_status = "needed"
+        irri_badge = "Irrigation Recommended"
+        irri_color = "#ea580c"
+        irri_reason = f"High temperatures ({temp:.1f}°C) increase evapotranspiration. Provide light irrigation in morning or evening."
+    elif total_rain_2d < 1.0 and max_rain_prob < 25:
+        irri_status = "normal"
+        irri_badge = "Normal Schedule"
+        irri_color = "#16a34a"
+        irri_reason = "Dry weather expected. Maintain routine irrigation based on crop growth stage and soil moisture."
+    else:
+        irri_status = "normal"
+        irri_badge = "Monitor Moisture"
+        irri_color = "#64748b"
+        irri_reason = "Check top 2-3 inches of soil moisture before applying scheduled irrigation."
+
+    # 3. Crop-Specific Disease & Pest Risk
+    pest_color = "#16a34a"
+    pest_level = "Low"
+
+    if crop_clean == "cotton":
+        if humidity > 75 and 22 <= temp <= 32:
+            pest_level = "High"
+            pest_color = "#dc2626"
+            pest_warning = "High humidity promotes sucking pests (whitefly, jassids) and boll rot. Scout underside of leaves."
+        elif humidity > 60:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Moderate humidity. Regular monitoring for pink bollworm and aphids recommended."
+        else:
+            pest_warning = "Weather conditions are dry; low fungal risk. Monitor for mites if dry spell persists."
+    elif crop_clean == "groundnut":
+        if humidity > 75:
+            pest_level = "High"
+            pest_color = "#dc2626"
+            pest_warning = "High moisture triggers Tikka leaf spot (Cercospora) and collar rot. Inspect lower canopy."
+        elif humidity > 60:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Watch for leaf miner and early leaf spot under humid mornings."
+        else:
+            pest_warning = "Low foliar disease pressure in current dry conditions."
+    elif crop_clean == "wheat":
+        if temp < 22 and humidity > 70:
+            pest_level = "High"
+            pest_color = "#dc2626"
+            pest_warning = "Cool moist conditions elevate yellow rust and powdery mildew risk. Inspect leaf blades."
+        elif humidity > 60:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Moderate rust risk. Ensure good field aeration in dense stands."
+        else:
+            pest_warning = "Clear sunny conditions favor healthy grain development."
+    elif crop_clean == "rice":
+        if humidity > 80:
+            pest_level = "High"
+            pest_color = "#dc2626"
+            pest_warning = "High humidity and overcast skies favor Bacterial Leaf Blight (BLB) and blast. Avoid excess nitrogen."
+        elif humidity > 65:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Monitor water level; watch for brown planthopper (BPH) near tiller bases."
+        else:
+            pest_warning = "Maintain 2-5 cm water depth to optimize tillering."
+    elif crop_clean == "mustard":
+        if 12 <= temp <= 22 and humidity > 65:
+            pest_level = "High"
+            pest_color = "#dc2626"
+            pest_warning = "Cloudy humid weather strongly triggers Aphids (મોલો-મશી / चेपा) and Alternaria blight."
+        elif humidity > 55:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Watch for aphid colonies on young inflorescence shoots."
+        else:
+            pest_warning = "Sunny weather keeps aphid populations suppressed."
+    elif crop_clean == "sugarcane":
+        if humidity > 70 and temp > 28:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "Warm humid conditions favor top borer and pyrilla. Check cane whorls."
+        else:
+            pest_warning = "Stable conditions. Maintain routine weeding and trash mulching."
+    else:  # general
+        if humidity > 75:
+            pest_level = "Moderate"
+            pest_color = "#d97706"
+            pest_warning = "High atmospheric moisture favors foliar fungal infections and downy mildew."
+        else:
+            pest_warning = "Low general pest and fungal pressure under current conditions."
+
+    # 4. Harvest & Threshing Window
+    if total_rain_2d >= 2.0 or max_rain_prob >= 40:
+        harvest_status = "unfavorable"
+        harvest_badge = "Postpone Harvest"
+        harvest_reason = "Rain or damp conditions can spoil harvested produce and cause mold."
+    else:
+        harvest_status = "favorable"
+        harvest_badge = "Favorable Harvest"
+        harvest_reason = "Dry conditions favorable for harvesting, threshing, and open sun drying."
+
+    return {
+        "place": weather["place"],
+        "crop": crop_clean,
+        "crop_name": crop_info["name"],
+        "weather_summary": {
+            "temp_c": temp,
+            "humidity_pct": humidity,
+            "wind_kmh": wind,
+            "rain_2d_mm": round(total_rain_2d, 1),
+            "rain_prob_max": max_rain_prob,
+        },
+        "spraying": {
+            "status": spray_status,
+            "badge": spray_badge,
+            "color": spray_color,
+            "reason": spray_reason,
+        },
+        "irrigation": {
+            "status": irri_status,
+            "badge": irri_badge,
+            "color": irri_color,
+            "reason": irri_reason,
+        },
+        "pest_disease": {
+            "level": pest_level,
+            "color": pest_color,
+            "warning": pest_warning,
+        },
+        "harvesting": {
+            "status": harvest_status,
+            "badge": harvest_badge,
+            "reason": harvest_reason,
+        },
+        "fetched_at": weather["fetched_at"]
+    }
+
+
+def describe_agri(agri: dict) -> str:
+    if not agri:
+        return ""
+    return (
+        f"Crop: {agri['crop_name']}\n"
+        f"- Spraying: {agri['spraying']['badge']} ({agri['spraying']['reason']})\n"
+        f"- Irrigation: {agri['irrigation']['badge']} ({agri['irrigation']['reason']})\n"
+        f"- Pest/Disease Risk ({agri['pest_disease']['level']}): {agri['pest_disease']['warning']}\n"
+        f"- Harvest/Drying: {agri['harvesting']['badge']} ({agri['harvesting']['reason']})"
+    )
+
+
 # -------------------------------------------------------------------- LLM
 ROLE_TEXT = {
     "general": "an ordinary member of the public (do not assume any job, rank or profession)",
@@ -497,9 +702,10 @@ ROLE_TEXT = {
 }
 
 
-def build_prompt(req: ChatRequest, weather: dict, alerts: dict, climate=None, aqi=None) -> str:
+def build_prompt(req: ChatRequest, weather: dict, alerts: dict, climate=None, aqi=None, agri=None) -> str:
     stale = " (NOTE: data may be outdated, tell the user)" if weather.get("stale") else ""
     role_text = ROLE_TEXT.get(req.role, "an ordinary member of the public")
+    agri_block = f"\nAgricultural Advisory ({agri.get('crop_name', req.crop)}):\n{describe_agri(agri)}\n" if (agri and req.role == "farmer") else ""
     return f"""You are WeatherGPT, a weather assistant for India.
 Rules:
 - Use ONLY the data below. If it is not there, say you don't know.
@@ -518,7 +724,7 @@ Rules:
   * probability under 60% and under 2 mm: mostly dry
   Never call a day dry if its expected rainfall is 2 mm or more.
 - If the user asks about air quality, pollution, morning walk, or breathing health, state the PM2.5, the Indian CPCB category, and the official health advisory.
-- Mention irrigation or crops only if the user is a farmer or asks about them; never give a definite irrigation order, say it depends on soil moisture and crop.
+- If the user is a farmer: use the Agricultural Advisory provided below to advise on spraying conditions, irrigation scheduling, and pest/disease warnings specific to their crop ({req.crop}).
 - The forecast covers 5 days, so say "next 5 days", not "this week".
 - Climate context is the average of the last {CLIMATE_YEARS} years for the same dates (ERA5 model data, not weather stations). Use it only when the user asks whether the weather is normal, unusual or how it compares with the past, or when the forecast is much wetter or drier than usual. Say "compared with the last {CLIMATE_YEARS} years". You have no data on climate change or long-term trends, so never comment on them.
 
@@ -528,7 +734,7 @@ Official alerts:
 {describe_alerts(alerts)}
 Air Quality (AQI):
 {describe_aqi(aqi)}
-Climate context:
+{agri_block}Climate context:
 {describe_climate(climate)}
 Weather data (JSON): {weather['forecast']}
 
@@ -634,6 +840,14 @@ async def aqi_endpoint(city: str = Query("Vadodara", max_length=80)):
     return await get_aqi(city)
 
 
+@app.get("/api/agri")
+@app.get("/agri", include_in_schema=False)
+async def agri_endpoint(city: str = Query("Vadodara", max_length=80), crop: str = Query("general", max_length=40)):
+    """Live Crop-Specific Agricultural Advisory (spraying, irrigation, disease risk, harvest window)."""
+    w = await get_weather(city)
+    return compute_agri_advisory(w, crop)
+
+
 @app.get("/api", include_in_schema=False)
 @app.get("/api/", include_in_schema=False)
 async def api_root():
@@ -651,7 +865,8 @@ async def chat(req: ChatRequest, request: Request):
     weather_data = await get_weather(req.city)
     alert_data, climate_data, aqi_data = await asyncio.gather(
         get_alerts(weather_data.get("state", ""), req.city), safe_climate(weather_data), get_aqi(req.city))
-    answer = await ask_llm(build_prompt(req, weather_data, alert_data, climate_data, aqi=aqi_data))
+    agri_data = compute_agri_advisory(weather_data, req.crop)
+    answer = await ask_llm(build_prompt(req, weather_data, alert_data, climate_data, aqi=aqi_data, agri=agri_data))
     
     current = weather_data.get("forecast", {}).get("current", {})
     daily = weather_data.get("forecast", {}).get("daily", {})
@@ -699,6 +914,14 @@ async def chat(req: ChatRequest, request: Request):
             "category": aqi_data.get("category"),
             "advisory": aqi_data.get("advisory"),
         },
+        "agri": {
+            "crop": agri_data.get("crop"),
+            "crop_name": agri_data.get("crop_name"),
+            "spraying": agri_data.get("spraying"),
+            "irrigation": agri_data.get("irrigation"),
+            "pest_disease": agri_data.get("pest_disease"),
+            "harvesting": agri_data.get("harvesting"),
+        },
     }
     return {
         "answer": answer,
@@ -707,6 +930,7 @@ async def chat(req: ChatRequest, request: Request):
         "fetched_at": weather_data["fetched_at"],
         "alerts": alert_data,
         "aqi": aqi_data,
+        "agri": agri_data,
         "grounding": grounding,
     }
 

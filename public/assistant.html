@@ -33,6 +33,7 @@
         <a href="assistant.html" aria-current="page" data-i18n="nav_ask">Ask</a>
         <a href="forecast.html" data-i18n="nav_forecast">Forecast</a>
         <a href="alerts.html" data-i18n="nav_alerts">Alerts</a>
+        <a href="map.html" data-i18n="nav_map">Map</a>
         <a href="climate.html" data-i18n="nav_climate">Climate</a>
         <a href="safety.html" data-i18n="nav_safety">Safety</a>
         <a href="about.html" data-i18n="nav_about">About</a>
@@ -61,6 +62,19 @@
         <option value="commuter" data-i18n="role_commuter">Commuter</option>
       </select>
     </div>
+    <div class="field" id="crop-field" hidden>
+      <label for="crop" data-i18n="crop_label">Crop</label>
+      <select id="crop">
+        <option value="cotton">Cotton (કપાસ / कपास)</option>
+        <option value="groundnut">Groundnut (મગફળી / मूंगफली)</option>
+        <option value="wheat">Wheat (ઘઉં / गेहूं)</option>
+        <option value="rice">Rice (ડાંગર / चावल)</option>
+        <option value="mustard">Mustard (રાયડો / सरसों)</option>
+        <option value="sugarcane">Sugarcane (શેરડી / गन्ना)</option>
+        <option value="general">General / Other Crops</option>
+      </select>
+    </div>
+    <div class="agri-card" id="agri-card" hidden aria-live="polite"></div>
     <div class="today" id="rail-today" aria-live="polite"></div>
   </aside>
 
