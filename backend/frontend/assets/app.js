@@ -9,7 +9,19 @@ const LOCAL_DEV = typeof location !== "undefined" &&
 const CONFIGURED_API = (typeof window !== "undefined" && window.WEATHERGPT_API) ? String(window.WEATHERGPT_API).replace(/\/+$/, "") : "";
 const API = CONFIGURED_API || (LOCAL_DEV ? "http://127.0.0.1:8000" : "");
 
-const LANGS = [["English", "en-IN"], ["Hindi", "hi-IN"], ["Gujarati", "gu-IN"], ["Marathi", "mr-IN"], ["Bengali", "bn-IN"], ["Tamil", "ta-IN"]];
+const LANGS = [
+  ["English", "en-IN"],
+  ["Hindi", "hi-IN"],
+  ["Gujarati", "gu-IN"],
+  ["Marathi", "mr-IN"],
+  ["Bengali", "bn-IN"],
+  ["Tamil", "ta-IN"],
+  ["Telugu", "te-IN"],
+  ["Kannada", "kn-IN"],
+  ["Malayalam", "ml-IN"],
+  ["Punjabi", "pa-IN"],
+  ["Odia", "or-IN"],
+];
 const EXAMPLES = {
   general: {
     English: ["Will it rain today?", "Are there any official warnings for my area?", "What should I plan for tomorrow?", "Is this rain normal for this time of year?"],
@@ -53,6 +65,8 @@ const ICONS = {
   pin: '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
   whatsapp: '<path d="M17.47 14.38c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.95 1.18-.18.2-.35.23-.65.08-.3-.15-1.27-.47-2.42-1.49-.9-.8-1.5-1.78-1.68-2.09-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.17.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.25-.59-.5-.51-.68-.52-.17-.01-.38-.01-.58-.01-.2 0-.52.08-.8.38s-1.06 1.03-1.06 2.51 1.08 2.91 1.23 3.11c.15.2 2.13 3.24 5.15 4.55.72.31 1.28.5 1.72.64.72.23 1.38.2 1.9.12.58-.09 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.12-.28-.2-.58-.35zM12 2a10 10 0 0 0-8.66 15l-1.34 4.9 5.02-1.32A10 10 0 1 0 12 2z"/>',
   shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  speaker: '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>',
+  copy: '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
 };
 function iconSvg(name, cls) {
   return `<svg${cls ? ` class="${cls}"` : ""} viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ""}</svg>`;
@@ -1648,15 +1662,109 @@ async function initMap() {
       const marker = L.marker([c.lat, c.lon], { icon: customIcon });
 
 const ALERT_DICTIONARY = [
-  { match: /thunderstorm/i, hi: "बिजली और गर्जना के साथ आंधी-तूफान की चेतावनी", gu: "વીજળીના કડાકા-ભડાકા સાથે વાવાઝોડાની ચેતવણી" },
-  { match: /lightning/i, hi: "આકાશી વીજળી પડવાનું જોખમ, સુરક્ષિત સ્થળે રહેવું", gu: "આકાશી વીજળી પડવાનું જોખમ, સુરક્ષિત સ્થળે રહેવું" },
-  { match: /heavy rain/i, hi: "भारी बारिश की आधिकारिक चेतावनी", gu: "ભારે વરસાદની સત્તાવાર ચેતવણી" },
-  { match: /very heavy rain/i, hi: "अत्यधिक भारी वर्षा का रेड अलर्ट", gu: "અતિ ભારે વરસાદનું રેડ એલર્ટ" },
-  { match: /squall|gusty wind/i, hi: "तेज आंधी और हवाएं चलने की चेतावनी", gu: "ઝડપી પવન અને વાવાઝોડાની ચેતવણી" },
-  { match: /heat wave/i, hi: "भीषण लू (हीट वेव) का प्रकोप", gu: "હીટવેવ (ગરમ લૂ) નો પ્રકોપ" },
-  { match: /hailstorm/i, hi: "ओलावृष्टि की संभावना", gu: "કરા પડવાની શક્યતા" },
-  { match: /dense fog/i, hi: "घना कोहरा छाए रहने की संभावना", gu: "ગાઢ ધુમ્મસની ચેતવણી" },
+  {
+    match: /thunderstorm/i,
+    hi: "बिजली और गर्जना के साथ आंधी-तूफान की चेतावनी",
+    gu: "વીજળીના કડાકા-ભડાકા સાથે વાવાઝોડાની ચેતવણી",
+    mr: "विजांच्या कडकडाटासह वादळी पावसाचा इशारा",
+    bn: "বজ্রবিদ্যুৎ সহ ঝড়-বৃষ্টির সতর্কতা",
+    ta: "இடி மின்னலுடன் கூடிய புயல் எச்சரிக்கை",
+    te: "ఉరుములు మెరుపులతో కూడిన తుఫాను హెచ్చరిక",
+    kn: "ಗುಡುಗು ಸಹಿತ ಬಿರುಗಾಳಿ ಮಳೆಯ ಎಚ್ಚರಿಕೆ",
+  },
+  {
+    match: /lightning/i,
+    hi: "आकाशीय बिजली गिरने का खतरा, सुरक्षित स्थान पर रहें",
+    gu: "આકાશી વીજળી પડવાનું જોખમ, સુરક્ષિત સ્થળે રહેવું",
+    mr: "वीज पडण्याचा धोका, सुरक्षित ठिकाणी राहा",
+    bn: "বজ্রপাতের ঝুঁকি, নিরাপদ স্থানে থাকুন",
+    ta: "மின்னல் தாக்கும் அபாயம், பாதுகாப்பாக இருக்கவும்",
+    te: "పిడుగుపాటు ప్రమాదం, సురక్షిత ప్రాంతంలో ఉండండి",
+    kn: "ಮಿಂಚಿನ ಹೊಡೆತದ ಅಪಾಯ, ಸುರಕ್ಷಿತ ಸ್ಥಳದಲ್ಲಿರಿ",
+  },
+  {
+    match: /very heavy rain/i,
+    hi: "अत्यधिक भारी वर्षा का रेड अलर्ट",
+    gu: "અતિ ભારે વરસાદનું રેડ એલર્ટ",
+    mr: "अतिवृष्टीचा रेड अलर्ट",
+    bn: "অতি ভারী বৃষ্টির লাল সতর্কতা",
+    ta: "மிக கனமழை ரெட் அலர்ட்",
+    te: "అత్యంత భారీ వర్షం రెడ్ అలర్ట్",
+    kn: "ಅತ್ಯಂತ ಭಾರೀ ಮಳೆಯ ರೆಡ್ ಅಲರ್ಟ್",
+  },
+  {
+    match: /heavy rain/i,
+    hi: "भारी बारिश की आधिकारिक चेतावनी",
+    gu: "ભારે વરસાદની સત્તાવાર ચેતવણી",
+    mr: "मुसळधार पावसाचा इशारा",
+    bn: "ভারী বৃষ্টির সরকারি সতর্কতা",
+    ta: "கனமழை அதிகாரப்பூர்வ எச்சரிக்கை",
+    te: "భారీ వర్షం అధికారిక హెచ్చరిక",
+    kn: "ಭಾರೀ ಮಳೆಯ ಅಧಿಕೃತ ಎಚ್ಚರಿಕೆ",
+  },
+  {
+    match: /squall|gusty wind/i,
+    hi: "तेज आंधी और हवाएं चलने की चेतावनी",
+    gu: "ઝડપી પવન અને વાવાઝોડાની ચેતવણી",
+    mr: "वेगवान वारे आणि वादळाचा इशारा",
+    bn: "ঝড়ো বাতাসের সতর্কতা",
+    ta: "பலத்த காற்று வீசும் எச்சரிக்கை",
+    te: "తీవ్ర ఈదురు గాలుల హెచ్చరిక",
+    kn: "ಬಿರುಗಾಳಿ ಬೀಸುವ ಎಚ್ಚರಿಕೆ",
+  },
+  {
+    match: /heat wave/i,
+    hi: "भीषण लू (हीट वेव) का प्रकोप",
+    gu: "હીટવેવ (ગરમ લૂ) નો પ્રકોપ",
+    mr: "उष्णतेच्या लाटेचा (हीटवेव्ह) इशारा",
+    bn: "তীব্র তাপপ্রবাহের সতর্কতা",
+    ta: "கடுமையான வெப்ப அலை எச்சரிக்கை",
+    te: "తీవ్ర వడగాల్పుల హెచ్చరిక",
+    kn: "ತೀವ್ರ ಶಾಖದ ಅಲೆಯ ಎಚ್ಚರಿಕೆ",
+  },
+  {
+    match: /hailstorm/i,
+    hi: "ओलावृष्टि की संभावना",
+    gu: "કરા પડવાની શક્યતા",
+    mr: "गारपिटीची शक्यता",
+    bn: "শিলাবৃষ্টির আশঙ্কা",
+    ta: "ஆலங்கட்டி மழை எச்சரிக்கை",
+    te: "వడగండ్ల వాన హెచ్చరిక",
+    kn: "ಆಲಿಕಲ್ಲು ಮಳೆಯ ಎಚ್ಚರಿಕೆ",
+  },
+  {
+    match: /dense fog/i,
+    hi: "घना कोहरा छाए रहने की संभावना",
+    gu: "ગાઢ ધુમ્મસની ચેતવણી",
+    mr: "दाट धुके पडण्याची शक्यता",
+    bn: "ঘন কুয়াশার সতর্কতা",
+    ta: "அடர்ந்த பனிமூட்டம் எச்சரிக்கை",
+    te: "దట్టమైన పొగమంచు హెచ్చరిక",
+    kn: "ದಟ್ಟ ಮಂಜು ಕವಿದ ಎಚ್ಚರಿಕೆ",
+  },
 ];
+
+const MAP_LANGS = [
+  { code: "en", label: "EN", name: "English", bcp: "en-IN" },
+  { code: "hi", label: "हिन्दी", name: "Hindi", bcp: "hi-IN" },
+  { code: "gu", label: "ગુજરાતી", name: "Gujarati", bcp: "gu-IN" },
+  { code: "mr", label: "मराठी", name: "Marathi", bcp: "mr-IN" },
+  { code: "bn", label: "বাংলা", name: "Bengali", bcp: "bn-IN" },
+  { code: "ta", label: "தமிழ்", name: "Tamil", bcp: "ta-IN" },
+  { code: "te", label: "తెలుగు", name: "Telugu", bcp: "te-IN" },
+  { code: "kn", label: "ಕನ್ನಡ", name: "Kannada", bcp: "kn-IN" },
+];
+
+const WA_LABELS = {
+  en: { area: "Area", warn: "Warning", valid: "Valid until", em: "In an emergency, call 112.", title: "WEATHER ALERT" },
+  hi: { area: "क्षेत्र", warn: "चेतावनी", valid: "वैधता", em: "आपातकाल में 112 डायल करें।", title: "मौसम चेतावनी" },
+  gu: { area: "વિસ્તાર", warn: "ચેતવણી", valid: "માન્યતા", em: "કટોકટીમાં 112 ડાયલ કરો.", title: "હવામાન ચેતવણી" },
+  mr: { area: "विभाग / क्षेत्र", warn: "चेतावणी", valid: "वैधता", em: "आपत्कालीन परिस्थितीत 112 वर संपर्क साधा.", title: "हवामान इशारा" },
+  bn: { area: "এলাকা", warn: "সতর্কতা", valid: "মেয়াদ", em: "জরুরী পরিস্থিতিতে 112 নম্বরে কল করুন।", title: "আবহাওয়া সতর্কতা" },
+  ta: { area: "பகுதி", warn: "எச்சரிக்கை", valid: "செல்லுபடியாகும் நேரம்", em: "அவசரநிலைக்கு 112 அழைக்கவும்.", title: "வானிலை எச்சரிக்கை" },
+  te: { area: "ప్రాంతం", warn: "హెచ్చరిక", valid: "చెల్లుబాటు", em: "అత్యవసర పరిస్థితుల్లో 112 డయల్ చేయండి.", title: "వాతావరణ హెచ్చరిక" },
+  kn: { area: "ಪ್ರದೇಶ", warn: "ಎಚ್ಚರಿಕೆ", valid: "ಮಾನ್ಯತೆ", em: "ತುರ್ತು ಸಂದರ್ಭದಲ್ಲಿ 112 ಗೆ ಕರೆ ಮಾಡಿ.", title: "ಹವಾಮಾನ ಎಚ್ಚರಿಕೆ" },
+};
 
 function matchAlertDict(title, lang) {
   if (!title) return null;
@@ -1698,22 +1806,32 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
     const alertBox = h("div", "map-alert-box");
 
     const topRow = h("div", "map-alert-top");
-    const badge = h("span", "map-alert-badge", "⚠️ Official Alert");
 
+    // Dynamic Severity Badge
+    const titleLower = (alertItem.title || "").toLowerCase();
+    let sevClass = "badge-warning";
+    let sevText = "⚠️ Storm Alert";
+    if (titleLower.includes("very heavy") || titleLower.includes("red alert") || titleLower.includes("cyclone") || titleLower.includes("flood")) {
+      sevClass = "badge-severe";
+      sevText = "🚨 Severe Warning";
+    } else if (titleLower.includes("light ra") || titleLower.includes("advisory") || titleLower.includes("moderate rain")) {
+      sevClass = "badge-advisory";
+      sevText = "ℹ️ Weather Advisory";
+    }
+    const badge = h("span", `map-alert-badge ${sevClass}`, sevText);
+
+    // Multi-Language Translation Toolbar
     const transBar = h("div", "map-trans-bar");
-    const btnEn = h("button", "trans-chip active", "EN");
-    btnEn.type = "button";
-    btnEn.setAttribute("aria-label", "Show original English alert");
+    const transButtons = {};
+    MAP_LANGS.forEach((ml, idx) => {
+      const btn = h("button", "trans-chip" + (idx === 0 ? " active" : ""), ml.label);
+      btn.type = "button";
+      btn.setAttribute("aria-label", `Translate alert to ${ml.name}`);
+      btn.addEventListener("click", () => setAlertLang(ml.code, btn));
+      transButtons[ml.code] = btn;
+      transBar.append(btn);
+    });
 
-    const btnHi = h("button", "trans-chip", "हिन्दी");
-    btnHi.type = "button";
-    btnHi.setAttribute("aria-label", "Translate alert into Hindi");
-
-    const btnGu = h("button", "trans-chip", "ગુજરાતી");
-    btnGu.type = "button";
-    btnGu.setAttribute("aria-label", "Translate alert into Gujarati");
-
-    transBar.append(btnEn, btnHi, btnGu);
     topRow.append(badge, transBar);
     alertBox.append(topRow);
 
@@ -1725,41 +1843,118 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
 
     card.append(alertBox);
 
-    const transCache = { en: alertItem.title, hi: null, gu: null };
+    const transCache = { en: alertItem.title };
+    let currentLangCode = "en";
+    let currentAlertText = alertItem.title;
 
-    // Attention-Grabbing WhatsApp Share Button for this alert
+    // Attention-Grabbing WhatsApp Share Button (Compact 70% scale)
     const waAlert = h("a", "btn-whatsapp map-wa-btn");
     waAlert.target = "_blank";
     waAlert.rel = "noopener noreferrer";
-    waAlert.innerHTML = iconSvg("whatsapp") + "<span>📲 Share Alert on WhatsApp</span>";
+    waAlert.innerHTML = iconSvg("whatsapp") + "<span>📲 WhatsApp</span>";
 
     function updateWaLink(text, lang) {
-      const areaLabel = lang === "gu" ? "વિસ્તાર" : (lang === "hi" ? "क्षेत्र" : "Area");
-      const warnLabel = lang === "gu" ? "ચેતવણી" : (lang === "hi" ? "चेतावनी" : "Warning");
-      const validLabel = lang === "gu" ? "માન્યતા" : (lang === "hi" ? "वैधता" : "Valid until");
-      const emLabel = lang === "gu" ? "કટોકટીમાં 112 ડાયલ કરો." : (lang === "hi" ? "आपातकाल में 112 डायल करें।" : "In an emergency, call 112.");
-
-      const waMsg = `🚨 *WEATHER ALERT / હવામાન ચેતવણી*\n\n` +
-        `📍 *${areaLabel}:* ${c.name}, ${c.state}\n` +
-        `📢 *${warnLabel}:* ${text}\n` +
-        `⏳ *${validLabel}:* ${alertItem.valid_until}\n\n` +
-        `📞 ${emLabel}\n` +
+      const lbl = WA_LABELS[lang] || WA_LABELS.en;
+      const waMsg = `🚨 *${lbl.title}*\n\n` +
+        `📍 *${lbl.area}:* ${c.name}, ${c.state}\n` +
+        `📢 *${lbl.warn}:* ${text}\n` +
+        `⏳ *${lbl.valid}:* ${alertItem.valid_until}\n\n` +
+        `📞 ${lbl.em}\n` +
         `🔗 WeatherGPT Live Map: https://weather-gpt-theta.vercel.app/map.html`;
       waAlert.href = `https://api.whatsapp.com/send?text=${encodeURIComponent(waMsg)}`;
     }
     updateWaLink(alertItem.title, "en");
 
+    // Audio Pronunciation (Listen to Alert)
+    const btnListen = h("button", "map-util-btn");
+    btnListen.type = "button";
+    btnListen.innerHTML = iconSvg("speaker") + " <span>Listen</span>";
+    btnListen.setAttribute("aria-label", "Listen to alert spoken aloud");
+
+    let isSpeaking = false;
+    btnListen.addEventListener("click", () => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        alert("Speech synthesis is not supported on this browser.");
+        return;
+      }
+      if (isSpeaking) {
+        window.speechSynthesis.cancel();
+        isSpeaking = false;
+        btnListen.classList.remove("active");
+        btnListen.innerHTML = iconSvg("speaker") + " <span>Listen</span>";
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const ut = new SpeechSynthesisUtterance(currentAlertText);
+      const curL = MAP_LANGS.find(l => l.code === currentLangCode);
+      ut.lang = curL ? curL.bcp : "en-IN";
+      ut.rate = 0.95;
+      ut.onend = () => {
+        isSpeaking = false;
+        btnListen.classList.remove("active");
+        btnListen.innerHTML = iconSvg("speaker") + " <span>Listen</span>";
+      };
+      ut.onerror = () => {
+        isSpeaking = false;
+        btnListen.classList.remove("active");
+        btnListen.innerHTML = iconSvg("speaker") + " <span>Listen</span>";
+      };
+      isSpeaking = true;
+      btnListen.classList.add("active");
+      btnListen.innerHTML = "<span>⏹️ Stop</span>";
+      window.speechSynthesis.speak(ut);
+    });
+
+    // 1-Click Copy Alert
+    const btnCopy = h("button", "map-util-btn");
+    btnCopy.type = "button";
+    btnCopy.innerHTML = iconSvg("copy") + " <span>Copy</span>";
+    btnCopy.setAttribute("aria-label", "Copy alert text to clipboard");
+
+    btnCopy.addEventListener("click", async () => {
+      const lbl = WA_LABELS[currentLangCode] || WA_LABELS.en;
+      const fullText = `🚨 ${lbl.title}: ${c.name}, ${c.state}\n` +
+        `${lbl.warn}: ${currentAlertText}\n` +
+        `Valid until: ${alertItem.valid_until}\n${lbl.em}`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(fullText);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = fullText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        const origHtml = btnCopy.innerHTML;
+        btnCopy.innerHTML = "<span>✓ Copied</span>";
+        btnCopy.style.borderColor = "#16a34a";
+        btnCopy.style.color = "#16a34a";
+        setTimeout(() => {
+          btnCopy.innerHTML = origHtml;
+          btnCopy.style.borderColor = "";
+          btnCopy.style.color = "";
+        }, 2000);
+      } catch (err) {
+        console.warn("Copy error", err);
+      }
+    });
+
     async function setAlertLang(lang, activeBtn) {
-      [btnEn, btnHi, btnGu].forEach(b => b.classList.remove("active"));
+      Object.values(transButtons).forEach(b => b.classList.remove("active"));
       activeBtn.classList.add("active");
+      currentLangCode = lang;
 
       if (lang === "en") {
+        currentAlertText = transCache.en;
         alertTextP.textContent = transCache.en;
         updateWaLink(transCache.en, "en");
         return;
       }
 
       if (transCache[lang]) {
+        currentAlertText = transCache[lang];
         alertTextP.textContent = transCache[lang];
         updateWaLink(transCache[lang], lang);
         return;
@@ -1768,17 +1963,20 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
       const dictHit = matchAlertDict(alertItem.title, lang);
       if (dictHit) {
         transCache[lang] = dictHit;
+        currentAlertText = dictHit;
         alertTextP.textContent = dictHit;
         updateWaLink(dictHit, lang);
         return;
       }
 
       alertTextP.textContent = "Translating alert…";
-      const targetLangName = lang === "hi" ? "Hindi" : "Gujarati";
+      const targetLang = MAP_LANGS.find(l => l.code === lang);
+      const targetLangName = targetLang ? targetLang.name : "Hindi";
       try {
         const res = await api(`/api/translate?text=${encodeURIComponent(alertItem.title)}&language=${targetLangName}`);
         if (res && res.translated) {
           transCache[lang] = res.translated;
+          currentAlertText = res.translated;
           alertTextP.textContent = res.translated;
           updateWaLink(res.translated, lang);
           return;
@@ -1786,16 +1984,16 @@ function createMapPopup(c, weatherData, aqiData, alertData) {
       } catch (e) {
         console.warn("Translate API error:", e);
       }
+      currentAlertText = alertItem.title;
       alertTextP.textContent = alertItem.title;
       updateWaLink(alertItem.title, "en");
     }
 
-    btnEn.addEventListener("click", () => setAlertLang("en", btnEn));
-    btnHi.addEventListener("click", () => setAlertLang("hi", btnHi));
-    btnGu.addEventListener("click", () => setAlertLang("gu", btnGu));
+    const actionRow = h("div", "map-action-row");
+    actionRow.append(waAlert, btnListen, btnCopy);
 
     const acts = h("div", "map-popup-actions");
-    acts.append(waAlert);
+    acts.append(actionRow);
 
     const askBtn = h("a", "map-ask-btn", `💬 Ask WeatherGPT about ${c.name}`);
     askBtn.href = `assistant.html?q=What%20is%20the%20weather%20and%20safety%20advisory%20for%20${encodeURIComponent(c.name)}%3F`;

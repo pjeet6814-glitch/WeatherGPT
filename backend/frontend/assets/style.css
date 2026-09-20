@@ -880,26 +880,26 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
   color: var(--alarm);
 }
 
-/* ---------- WhatsApp share button (Attention Grabber) ---------- */
+/* ---------- WhatsApp share button (Attention Grabber - Compact 70% scale) ---------- */
 .btn-whatsapp {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
   background: linear-gradient(135deg, #25D366 0%, #128C7E 100%) !important;
   color: #FFFFFF !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
   border-radius: 999px !important;
-  padding: 8px 18px !important;
+  padding: 5px 12px !important;
   font-family: var(--body) !important;
   font-weight: 700 !important;
-  font-size: 14px !important;
+  font-size: 11.5px !important;
   line-height: 1.2 !important;
   letter-spacing: 0.02em;
   text-decoration: none !important;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.45), 0 2px 4px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 3px 12px rgba(37, 211, 102, 0.38), 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   animation: wa-glow 2.8s infinite ease-in-out;
   overflow: hidden;
@@ -926,20 +926,20 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 
 @keyframes wa-glow {
   0%, 100% {
-    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.42), 0 0 0 0 rgba(37, 211, 102, 0.35);
+    box-shadow: 0 3px 12px rgba(37, 211, 102, 0.38), 0 0 0 0 rgba(37, 211, 102, 0.3);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 6px 26px rgba(37, 211, 102, 0.72), 0 0 16px rgba(37, 211, 102, 0.55);
-    transform: scale(1.025);
+    box-shadow: 0 4px 18px rgba(37, 211, 102, 0.65), 0 0 12px rgba(37, 211, 102, 0.45);
+    transform: scale(1.02);
   }
 }
 
 .btn-whatsapp:hover {
   background: linear-gradient(135deg, #1ebe5d 0%, #0d7366 100%) !important;
   color: #FFFFFF !important;
-  transform: translateY(-2px) scale(1.04) !important;
-  box-shadow: 0 8px 30px rgba(37, 211, 102, 0.75), 0 0 20px rgba(37, 211, 102, 0.6) !important;
+  transform: translateY(-1px) scale(1.03) !important;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.65), 0 0 14px rgba(37, 211, 102, 0.5) !important;
 }
 
 .btn-whatsapp:active {
@@ -947,8 +947,8 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 }
 
 .btn-whatsapp svg {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   fill: #FFFFFF !important;
   stroke: none !important;
   flex-shrink: 0;
@@ -956,10 +956,10 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 }
 
 .alert .btn-whatsapp {
-  margin-top: 10px;
-  min-height: 42px;
-  padding: 10px 20px !important;
-  font-size: 14.5px !important;
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 6px 14px !important;
+  font-size: 12px !important;
 }
 
 /* ---------- why this answer panel ---------- */
@@ -1702,34 +1702,43 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 }
 
 .map-alert-badge {
-  font: 700 11px/1 var(--body);
+  font: 700 10.5px/1 var(--body);
   background: #dc2626;
   color: #ffffff;
   padding: 3px 8px;
   border-radius: 999px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
+.map-alert-badge.badge-severe { background: #dc2626; color: #ffffff; }
+.map-alert-badge.badge-warning { background: #d97706; color: #ffffff; }
+.map-alert-badge.badge-advisory { background: #2563eb; color: #ffffff; }
 
 .map-trans-bar {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 2px;
   gap: 2px;
+  max-width: 100%;
 }
 
 .trans-chip {
   background: transparent;
   border: none;
-  border-radius: 999px;
-  padding: 2px 7px;
-  font: 600 11px/1.2 var(--body);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font: 600 10.5px/1.2 var(--body);
   color: var(--ink);
   cursor: pointer;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 .trans-chip:hover {
   background: var(--line);
@@ -1742,7 +1751,7 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 
 .map-alert-text {
   margin: 4px 0 !important;
-  font-size: 13px !important;
+  font-size: 12.5px !important;
   font-weight: 600;
   color: var(--ink) !important;
   line-height: 1.4 !important;
@@ -1756,24 +1765,65 @@ tbody th { color: var(--ink); font-weight: 700; font-size: 17px; }
 .map-popup-actions {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.map-action-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
 }
 
 .map-wa-btn {
-  width: 100%;
+  flex: 1;
   box-sizing: border-box;
-  font-size: 13px !important;
-  padding: 8px 14px !important;
+  font-size: 11.5px !important;
+  padding: 5px 10px !important;
+  min-height: 28px;
+}
+
+.map-util-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 8px;
+  font: 600 11px/1.2 var(--body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+.map-util-btn:hover {
+  background: var(--line);
+  color: var(--link);
+  border-color: var(--link);
+}
+.map-util-btn.active {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+.map-util-btn svg {
+  width: 13px;
+  height: 13px;
+  stroke: currentColor;
+  fill: none;
 }
 
 .map-ask-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 7px 12px;
-  font-size: 12.5px;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink);
   background: var(--surface);
