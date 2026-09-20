@@ -66,6 +66,7 @@ _feed_cache: dict[str, dict] = {}  # alert feed cache (ETag + TTL)
 RATE_LIMIT = int(os.getenv("CHAT_RATE_LIMIT", "30"))   # chat requests per visitor per window
 RATE_WINDOW = 600                                      # seconds
 _hits: dict[str, deque] = {}
+LLM_BUDGET_SECONDS = 60                                # stop trying more models after this long
 LANGUAGES = {
     "English", "Hindi", "Gujarati", "Marathi", "Bengali", "Tamil",
     "Telugu", "Kannada", "Malayalam", "Punjabi", "Odia"
