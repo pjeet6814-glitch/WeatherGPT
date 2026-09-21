@@ -798,6 +798,19 @@ function setupLiveWeatherAtmosphere() {
   let animFrameId = null;
   let isRunning = false;
   let isHeroVisible = true;
+  let mouseX = -999, mouseY = -999, mouseActive = false;
+
+  hero.addEventListener("mousemove", (e) => {
+    const rect = hero.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    mouseActive = true;
+  });
+  hero.addEventListener("mouseleave", () => {
+    mouseActive = false;
+    mouseX = -999;
+    mouseY = -999;
+  });
 
   function resize() {
     const rect = hero.getBoundingClientRect();
@@ -1028,6 +1041,19 @@ function setupLiveWeatherAtmosphere() {
         const p = particles[i];
         p.y += p.speed;
         p.x += p.drift;
+
+        // Dynamic mouse wake deflection
+        if (mouseActive) {
+          const mdx = p.x - mouseX;
+          const mdy = p.y - mouseY;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 110) {
+            const force = (1 - mdist / 110) * 4;
+            p.x += (mdx / (mdist + 1)) * force;
+            p.y -= force * 0.4;
+          }
+        }
+
         if (p.y > height) {
           p.y = -p.len;
           p.x = Math.random() * (width + 100) - 50;
@@ -1043,10 +1069,31 @@ function setupLiveWeatherAtmosphere() {
     }
 
     if (type === "clear-day") {
+      if (mouseActive) {
+        const aura = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 85);
+        aura.addColorStop(0, "rgba(254, 240, 138, 0.16)");
+        aura.addColorStop(0.6, "rgba(253, 224, 71, 0.05)");
+        aura.addColorStop(1, "rgba(253, 224, 71, 0)");
+        ctx.fillStyle = aura;
+        ctx.fillRect(mouseX - 85, mouseY - 85, 170, 170);
+      }
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.y += p.vy;
         p.x += p.vx + Math.sin(t + p.phase) * 0.25;
+
+        // Dynamic solar mote swirl towards pointer
+        if (mouseActive) {
+          const mdx = mouseX - p.x;
+          const mdy = mouseY - p.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 140 && mdist > 4) {
+            p.x += (mdx / mdist) * 1.1;
+            p.y += (mdy / mdist) * 1.1;
+          }
+        }
+
         if (p.y < -10) {
           p.y = height + 10;
           p.x = Math.random() * width;
@@ -1071,6 +1118,15 @@ function setupLiveWeatherAtmosphere() {
         const p = particles[i];
         p.y -= p.speed;
         p.x += Math.sin((p.y + p.driftOffset) * 0.03 + t * 2) * 0.7;
+
+        // Dynamic thermal updraft near pointer
+        if (mouseActive) {
+          const mdx = Math.abs(p.x - mouseX);
+          if (mdx < 90) {
+            p.y -= (1 - mdx / 90) * 1.6;
+          }
+        }
+
         if (p.y < -10) {
           p.y = height + 10;
           p.x = Math.random() * width;
@@ -1222,6 +1278,19 @@ function setupPageAtmosphere(pageType) {
   let alertTone = "green";
   let radarAngle = 0;
   let scanX = 0;
+  let mouseX = -999, mouseY = -999, mouseActive = false;
+
+  banner.addEventListener("mousemove", (e) => {
+    const rect = banner.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    mouseActive = true;
+  });
+  banner.addEventListener("mouseleave", () => {
+    mouseActive = false;
+    mouseX = -999;
+    mouseY = -999;
+  });
 
   function resize() {
     const rect = banner.getBoundingClientRect();
@@ -1349,6 +1418,19 @@ function setupPageAtmosphere(pageType) {
           const p = particles[i];
           p.y += p.speed;
           p.x -= p.speed * 0.15;
+
+          // Dynamic mouse wind deflection
+          if (mouseActive) {
+            const mdx = p.x - mouseX;
+            const mdy = p.y - mouseY;
+            const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+            if (mdist < 110) {
+              const force = (1 - mdist / 110) * 3.5;
+              p.x += (mdx / (mdist + 1)) * force;
+              p.y -= force * 0.3;
+            }
+          }
+
           if (p.y > height) {
             p.y = -p.len;
             p.x = Math.random() * (width + 50) - 25;
@@ -1358,6 +1440,15 @@ function setupPageAtmosphere(pageType) {
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(p.x - 4, p.y + p.len);
+          ctx.stroke();
+        }
+
+        if (mouseActive) {
+          ctx.strokeStyle = "rgba(186, 230, 253, 0.4)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          const r = ((t * 35) % 28) + 5;
+          ctx.arc(mouseX, mouseY, r, 0, Math.PI * 2);
           ctx.stroke();
         }
         ctx.globalAlpha = 1;
@@ -1371,10 +1462,31 @@ function setupPageAtmosphere(pageType) {
         ctx.fillStyle = glow;
         ctx.fillRect(0, 0, width, height);
 
+        if (mouseActive) {
+          const halo = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 80);
+          halo.addColorStop(0, "rgba(254, 240, 138, 0.18)");
+          halo.addColorStop(0.6, "rgba(253, 224, 71, 0.05)");
+          halo.addColorStop(1, "rgba(253, 224, 71, 0)");
+          ctx.fillStyle = halo;
+          ctx.fillRect(mouseX - 80, mouseY - 80, 160, 160);
+        }
+
         for (let i = 0; i < particles.length; i++) {
           const p = particles[i];
           p.y += p.vy;
           p.x += Math.sin(t + p.phase) * 0.3;
+
+          // Dynamic solar mote swirl
+          if (mouseActive) {
+            const mdx = mouseX - p.x;
+            const mdy = mouseY - p.y;
+            const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+            if (mdist < 130 && mdist > 4) {
+              p.x += (mdx / mdist) * 1.0;
+              p.y += (mdy / mdist) * 1.0;
+            }
+          }
+
           if (p.y < -10) {
             p.y = height + 10;
             p.x = Math.random() * width;
@@ -1432,11 +1544,42 @@ function setupPageAtmosphere(pageType) {
       ctx.lineTo(rcx + Math.cos(radarAngle) * maxRadius, rcy + Math.sin(radarAngle) * maxRadius);
       ctx.stroke();
 
+      // Interactive HUD targeting crosshair on mouse
+      if (mouseActive) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(${radarColor}, 0.45)`;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(rcx, rcy);
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = `rgba(${radarColor}, 0.85)`;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 14, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mouseX - 20, mouseY); ctx.lineTo(mouseX - 14, mouseY);
+        ctx.moveTo(mouseX + 14, mouseY); ctx.lineTo(mouseX + 20, mouseY);
+        ctx.moveTo(mouseX, mouseY - 20); ctx.lineTo(mouseX, mouseY - 14);
+        ctx.moveTo(mouseX, mouseY + 14); ctx.lineTo(mouseX, mouseY + 20);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         const bx = rcx + Math.cos(p.angle) * (p.dist * (maxRadius / 140));
         const by = rcy + Math.sin(p.angle) * (p.dist * (maxRadius / 140));
-        const bAlpha = Math.max(0.1, Math.min(0.9, p.alpha + Math.sin(t * p.blinkSpeed + p.phase) * 0.4));
+        let bAlpha = Math.max(0.1, Math.min(0.9, p.alpha + Math.sin(t * p.blinkSpeed + p.phase) * 0.4));
+        if (mouseActive) {
+          const mdist = Math.hypot(bx - mouseX, by - mouseY);
+          if (mdist < 40) bAlpha = Math.min(1, bAlpha + 0.4);
+        }
         ctx.fillStyle = `rgba(${radarColor}, ${bAlpha})`;
         ctx.beginPath();
         ctx.arc(bx, by, p.size, 0, Math.PI * 2);
@@ -1451,7 +1594,16 @@ function setupPageAtmosphere(pageType) {
         ctx.beginPath();
         ctx.moveTo(0, height);
         for (let x = 0; x <= width; x += 15) {
-          const y = baseOffset + Math.sin(x * freq + t * speed) * amp + Math.cos(x * 0.003 + t * 0.4) * 8;
+          let wave = Math.sin(x * freq + t * speed) * amp + Math.cos(x * 0.003 + t * 0.4) * 8;
+          // Dynamic fluid ripple at cursor
+          if (mouseActive) {
+            const dx = Math.abs(x - mouseX);
+            if (dx < 120) {
+              const ripple = Math.cos((dx / 120) * Math.PI * 0.5) * 16 * Math.sin(t * 6 - dx * 0.08);
+              wave += ripple;
+            }
+          }
+          const y = baseOffset + wave;
           ctx.lineTo(x, y);
         }
         ctx.lineTo(width, height);
@@ -1468,6 +1620,18 @@ function setupPageAtmosphere(pageType) {
         const p = particles[i];
         p.y -= p.speed;
         p.x += Math.sin(t + p.phase) * 0.4;
+
+        // Dynamic thermal mote gravitation
+        if (mouseActive) {
+          const mdx = mouseX - p.x;
+          const mdy = mouseY - p.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 120 && mdist > 4) {
+            p.x += (mdx / mdist) * 0.9;
+            p.y += (mdy / mdist) * 0.9;
+          }
+        }
+
         if (p.y < -10) {
           p.y = height + 10;
           p.x = Math.random() * width;
@@ -1483,16 +1647,27 @@ function setupPageAtmosphere(pageType) {
       const hexR = 34;
       const hexW = hexR * Math.sqrt(3);
       const hexH = hexR * 1.5;
-      ctx.strokeStyle = "rgba(45, 212, 191, 0.12)";
       ctx.lineWidth = 1;
       for (let y = -hexR; y < height + hexR; y += hexH) {
         const row = Math.floor(y / hexH);
         const xOffset = (row % 2 === 0) ? 0 : hexW / 2;
         for (let x = -hexW + xOffset; x < width + hexW; x += hexW) {
           const breathe = Math.sin(t * 1.4 + (x + y) * 0.01) * 0.04;
-          if (breathe > 0) {
+          let cellAlpha = 0.08 + breathe;
+
+          // Dynamic hexagonal shield illumination near cursor
+          if (mouseActive) {
+            const hdx = x - mouseX;
+            const hdy = y - mouseY;
+            const hdist = Math.sqrt(hdx * hdx + hdy * hdy);
+            if (hdist < 140) {
+              cellAlpha += (1 - hdist / 140) * 0.35;
+            }
+          }
+
+          if (cellAlpha > 0.04) {
             ctx.save();
-            ctx.strokeStyle = `rgba(45, 212, 191, ${0.08 + breathe})`;
+            ctx.strokeStyle = `rgba(45, 212, 191, ${Math.min(0.7, cellAlpha)})`;
             ctx.beginPath();
             for (let a = 0; a < 6; a++) {
               const angle = (Math.PI / 3) * a;
@@ -1508,10 +1683,34 @@ function setupPageAtmosphere(pageType) {
         }
       }
 
+      // Dynamic forcefield pulse ring around cursor
+      if (mouseActive) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(45, 212, 191, 0.55)";
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        const pR = ((t * 30) % 36) + 8;
+        ctx.arc(mouseX, mouseY, pR, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
+
+        // Repel slightly near pointer
+        if (mouseActive) {
+          const mdx = p.x - mouseX;
+          const mdy = p.y - mouseY;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 80 && mdist > 2) {
+            p.x += (mdx / mdist) * 1.2;
+            p.y += (mdy / mdist) * 1.2;
+          }
+        }
+
         if (p.x < 0 || p.x > width) p.vx *= -1;
         if (p.y < 0 || p.y > height) p.vy *= -1;
         const breathe = Math.sin(t * 2 + p.phase) * 0.2;
@@ -1523,7 +1722,7 @@ function setupPageAtmosphere(pageType) {
       }
       ctx.globalAlpha = 1;
     } else if (pageType === "assistant") {
-      const maxConnectDist = 80;
+      const maxConnectDist = 85;
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.x += p.vx * pulseEnergy;
@@ -1552,6 +1751,35 @@ function setupPageAtmosphere(pageType) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * (pulseEnergy > 1.2 ? 1.3 : 1), 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      // Dynamic synaptic connection to cursor!
+      if (mouseActive) {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const mdx = mouseX - p.x;
+          const mdy = mouseY - p.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 135) {
+            const lineAlpha = (1 - mdist / 135) * 0.65;
+            ctx.strokeStyle = `rgba(167, 139, 250, ${lineAlpha})`;
+            ctx.lineWidth = 1.3;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(mouseX, mouseY);
+            ctx.stroke();
+          }
+        }
+        // AI neural core node at cursor
+        ctx.fillStyle = "rgba(196, 181, 253, 0.95)";
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(167, 139, 250, 0.5)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 12 + Math.sin(t * 4) * 3, 0, Math.PI * 2);
+        ctx.stroke();
       }
       ctx.globalAlpha = 1;
     } else if (pageType === "map") {
@@ -1585,6 +1813,30 @@ function setupPageAtmosphere(pageType) {
         }
       }
 
+      // Dynamic GPS tracking reticle brackets at cursor
+      if (mouseActive) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.9)";
+        ctx.lineWidth = 1.5;
+        const sz = 16;
+        ctx.beginPath();
+        // top-left corner
+        ctx.moveTo(mouseX - sz, mouseY - sz + 6); ctx.lineTo(mouseX - sz, mouseY - sz); ctx.lineTo(mouseX - sz + 6, mouseY - sz);
+        // top-right corner
+        ctx.moveTo(mouseX + sz - 6, mouseY - sz); ctx.lineTo(mouseX + sz, mouseY - sz); ctx.lineTo(mouseX + sz, mouseY - sz + 6);
+        // bottom-left corner
+        ctx.moveTo(mouseX - sz, mouseY + sz - 6); ctx.lineTo(mouseX - sz, mouseY + sz); ctx.lineTo(mouseX - sz + 6, mouseY + sz);
+        // bottom-right corner
+        ctx.moveTo(mouseX + sz - 6, mouseY + sz); ctx.lineTo(mouseX + sz, mouseY + sz); ctx.lineTo(mouseX + sz, mouseY + sz - 6);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(56, 189, 248, 0.95)";
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.r += p.speed;
@@ -1600,13 +1852,31 @@ function setupPageAtmosphere(pageType) {
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
         p.y -= p.speed;
+
+        let charAlpha = p.alpha;
+        let charColor = "125, 211, 252";
+        let charFont = "11px monospace";
+
+        // Dynamic cyber scatter on hover
+        if (mouseActive) {
+          const mdx = mouseX - p.x;
+          const mdy = mouseY - p.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 85) {
+            p.x -= (mdx / (mdist + 1)) * 1.6;
+            charColor = "56, 189, 248";
+            charAlpha = Math.min(1, p.alpha + 0.5);
+            charFont = "bold 13px monospace";
+          }
+        }
+
         if (p.y < -20) {
           p.y = height + 10;
           p.x = Math.random() * width;
         }
-        ctx.globalAlpha = p.alpha;
-        ctx.fillStyle = "rgba(125, 211, 252, 0.85)";
-        ctx.font = "11px monospace";
+        ctx.globalAlpha = charAlpha;
+        ctx.fillStyle = `rgba(${charColor}, 0.9)`;
+        ctx.font = charFont;
         ctx.fillText(p.char, p.x, p.y);
       }
       ctx.globalAlpha = 1;

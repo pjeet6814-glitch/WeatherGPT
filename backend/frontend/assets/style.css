@@ -267,14 +267,16 @@ input[type="text"], select, textarea {
 .page-hero-banner {
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
-  padding: 34px 38px 36px;
-  margin: 20px 0 32px;
+  border-radius: 20px;
+  min-height: 240px;
+  padding: 42px 48px 44px;
+  margin: 22px 0 36px;
   background: var(--band);
   color: #ffffff;
-  box-shadow: 0 14px 36px -12px rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s ease;
+  box-shadow: 0 16px 42px -12px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-left: 6px solid var(--banner-accent, #38bdf8);
+  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s ease, min-height 0.3s ease;
 }
 
 .page-hero-banner::before {
@@ -291,18 +293,32 @@ input[type="text"], select, textarea {
   z-index: 2;
 }
 
-.page-hero-banner h1 {
+/* Left accent border on header text */
+.banner-text-block,
+.hero-text-block {
+  border-left: 4px solid var(--banner-accent, rgba(255, 255, 255, 0.65));
+  padding-left: 22px;
+  margin: 12px 0 24px;
+  position: relative;
+  z-index: 2;
+  box-shadow: -4px 0 12px -3px rgba(0, 0, 0, 0.2);
+}
+
+.banner-text-block h1,
+.hero-text-block h1 {
   color: #ffffff !important;
   margin-bottom: 8px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
 
-.page-hero-banner .lede {
-  color: rgba(255, 255, 255, 0.9) !important;
-  font-size: 17px;
+.banner-text-block .lede,
+.hero-text-block .lede {
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 17.5px;
   max-width: 68ch;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-  margin-bottom: 20px;
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
 }
 
 .page-hero-banner .field label {
@@ -400,41 +416,51 @@ input[type="text"], select, textarea {
 
 /* Page themes for .page-hero-banner */
 .page-hero-banner[data-page-theme="forecast"] {
+  --banner-accent: #38bdf8;
   background: linear-gradient(135deg, #0e3b5e 0%, #164e70 50%, #206384 100%);
 }
 .page-hero-banner[data-page-theme="forecast"][data-forecast-weather="rain"] {
+  --banner-accent: #60a5fa;
   background: linear-gradient(135deg, #0a1f2e 0%, #133246 50%, #1a425a 100%);
 }
 .page-hero-banner[data-page-theme="forecast"][data-forecast-weather="sun"] {
+  --banner-accent: #fbbf24;
   background: linear-gradient(135deg, #0f3f63 0%, #1b5e82 50%, #a16207 125%);
 }
 
 .page-hero-banner[data-page-theme="alerts"] {
+  --banner-accent: #34d399;
   background: linear-gradient(135deg, #131826 0%, #1e1b30 50%, #182236 100%);
 }
 .page-hero-banner[data-page-theme="alerts"][data-alert-status="active"] {
+  --banner-accent: #f43f5e;
   background: linear-gradient(135deg, #2b1114 0%, #3d141e 50%, #291522 100%);
   border-color: rgba(244, 63, 94, 0.4);
 }
 
 .page-hero-banner[data-page-theme="climate"] {
+  --banner-accent: #f59e0b;
   background: linear-gradient(135deg, #261a12 0%, #3b2518 50%, #1d2c3b 100%);
 }
 
 .page-hero-banner[data-page-theme="safety"] {
+  --banner-accent: #2dd4bf;
   background: linear-gradient(135deg, #0d2c2e 0%, #133c39 50%, #164547 100%);
 }
 
 .page-hero-banner[data-page-theme="assistant"],
 .rail.page-hero-banner {
+  --banner-accent: #818cf8;
   background: linear-gradient(135deg, #0c1527 0%, #152248 50%, #1e1b4b 100%);
 }
 
 .page-hero-banner[data-page-theme="map"] {
+  --banner-accent: #0ea5e9;
   background: linear-gradient(135deg, #0a1c2e 0%, #0f2742 50%, #153554 100%);
 }
 
 .page-hero-banner[data-page-theme="about"] {
+  --banner-accent: #38bdf8;
   background: linear-gradient(135deg, #101726 0%, #182338 50%, #1e2e44 100%);
 }
 
@@ -450,9 +476,14 @@ input[type="text"], select, textarea {
 
 @media (max-width: 720px) {
   .page-hero-banner {
-    padding: 22px 18px 24px;
+    padding: 26px 20px 28px;
     border-radius: 14px;
-    margin: 14px 0 22px;
+    margin: 16px 0 24px;
+  }
+  .banner-text-block,
+  .hero-text-block {
+    padding-left: 16px;
+    border-left-width: 3.5px;
   }
 }
 
